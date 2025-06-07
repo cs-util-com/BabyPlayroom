@@ -1,0 +1,92 @@
+/* /public/effects.css */
+
+/* 1. Fade Out */
+@keyframes fade_out {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.9); }
+}
+.fade_out { animation: fade_out 1s forwards; }
+
+/* 2. Shrink and Fade */
+@keyframes shrink_fade {
+  0%   { opacity: 1; transform: scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: scale(0.1) rotate(360deg); }
+}
+.shrink_fade { animation: shrink_fade 1s forwards; }
+
+/* 3. Sparkle Burst (as per README) */
+@keyframes sparkle_burst {
+  0%   { opacity:1; transform:scale(1); }
+  70%  { opacity:1; transform:scale(1.15); box-shadow:0 0 20px rgba(255,255,255,.8); }
+  100% { opacity:0; transform:scale(.8); }
+}
+.sparkle_burst { animation: sparkle_burst 0.7s forwards; } /* README specifies 0.7s */
+
+/* 4. Confetti Pop */
+@keyframes confetti_pop {
+  0%   { opacity: 1; transform: scale(1) translateY(0px); }
+  50%  { opacity: 1; transform: scale(1.2) translateY(-10px); }
+  100% { opacity: 0; transform: scale(0.5) translateY(20px); filter: blur(5px); }
+}
+.confetti_pop { animation: confetti_pop 1s forwards; }
+
+/* 5. Bounce Drop */
+@keyframes bounce_drop {
+  0%   { opacity: 1; transform: translateY(-100%) scaleY(0.5); animation-timing-function: ease-in; }
+  20%  { transform: translateY(0) scaleY(1.1); animation-timing-function: ease-out; }
+  40%  { transform: translateY(-30%) scaleY(0.8); animation-timing-function: ease-in; }
+  60%  { transform: translateY(0) scaleY(1.05); animation-timing-function: ease-out; }
+  80%  { transform: translateY(-10%) scaleY(0.95); animation-timing-function: ease-in; }
+  100% { opacity: 0; transform: translateY(0) scaleY(1); animation-timing-function: ease-out; }
+}
+.bounce_drop { animation: bounce_drop 1s forwards; }
+
+/* 6. Particle Dissolve */
+@keyframes particle_dissolve {
+  0%   { opacity: 1; transform: scale(1); filter: blur(0px); }
+  100% { opacity: 0; transform: scale(1.5); filter: blur(10px); }
+}
+.particle_dissolve { animation: particle_dissolve 1s forwards; }
+
+/* 7. Pulse Glow */
+@keyframes pulse_glow {
+  0%   { opacity: 1; transform: scale(1); box-shadow: 0 0 5px rgba(255,255,100,.5); }
+  50%  { opacity: 0.8; transform: scale(1.1); box-shadow: 0 0 30px rgba(255,255,100,1); }
+  100% { opacity: 0; transform: scale(1); box-shadow: 0 0 5px rgba(255,255,100,.5); }
+}
+.pulse_glow { animation: pulse_glow 1s forwards; }
+
+/* 8. Wiggle and Spin */
+@keyframes wiggle_spin {
+  0%   { opacity: 1; transform: scale(1) rotate(0deg) translateX(0px); }
+  25%  { transform: scale(1.1) rotate(15deg) translateX(5px); }
+  50%  { transform: scale(1) rotate(-10deg) translateX(-5px); }
+  75%  { transform: scale(1.1) rotate(10deg) translateX(3px); }
+  100% { opacity: 0; transform: scale(0.2) rotate(180deg) translateX(0px); }
+}
+.wiggle_spin { animation: wiggle_spin 1s forwards; }
+
+/* 9. Slide Away */
+@keyframes slide_away {
+  0%   { opacity: 1; transform: translateX(0%) scale(1); }
+  100% { opacity: 0; transform: translateX(100%) scale(0.8); }
+}
+.slide_away { animation: slide_away 1s forwards; }
+
+/* 10. Star Trail (using pseudo-elements could be more complex, this is a simplified version) */
+@keyframes star_trail_main {
+  0%   { opacity: 1; transform: scale(1) translateY(0px); }
+  100% { opacity: 0; transform: scale(0.5) translateY(-50px); }
+}
+.star_trail {
+  animation: star_trail_main 1s forwards;
+  /* For a true trail, JS would spawn multiple fading elements or use a canvas */
+}
+
+/* Ensure all animations respect prefers-reduced-motion if not handled by JS globally */
+@media (prefers-reduced-motion: reduce) {
+  .fade_out, .shrink_fade, .sparkle_burst, .confetti_pop, .bounce_drop,
+  .particle_dissolve, .pulse_glow, .wiggle_spin, .slide_away, .star_trail {
+    animation: fade_out 0.5s forwards; /* Default to a simple fade if motion is reduced */
+  }
+}

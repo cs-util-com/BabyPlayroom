@@ -1,430 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Baby Tummy‑Time Motivator</title>
-
-  <!-- Tailwind CSS (CDN build) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- OpenMoji color font -->
-  <link rel="preload" as="font" href="https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji@15.0.0/font/OpenMoji-color-colr1_svg/OpenMoji-color-colr1_svg.woff2" type="font/woff2" crossorigin>
-  <style>
-    @font-face {
-      font-family: "OpenMoji";
-      src: url("https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji@15.0.0/font/OpenMoji-color-colr1_svg/OpenMoji-color-colr1_svg.woff2") format("woff2");
-      font-weight: normal;
-      font-style: normal;
-    }
-
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      font-family: "OpenMoji", system-ui, sans-serif;
-    }
-
-    /* Subtle pastel stripe pattern; colours are swapped at runtime via JS */
-    body {
-      --bg1: #ffb3ba;
-      --bg2: #ffdfba;
-      background-image: repeating-linear-gradient(135deg, var(--bg1) 0 8px, var(--bg2) 8px 16px);
-      background-size: cover;
-    }
-
-    /* Moving animal sprite */
-    .animal {
-      position: absolute;
-      user-select: none;
-      touch-action: none;
-      cursor: pointer;
-      animation: drift var(--cycle, 7s) ease-in-out infinite alternate;
-      transform: translate(var(--sx, 0), var(--sy, 0));
-    }
-
-    /* Drift keyframe – the element animates between two translate values that JS rewrites every cycle */
-    @keyframes drift {
-      to {
-        transform: translate(var(--dx, 0), var(--dy, 0));
-      }
-    }
-
-    /* Despawn effects (simplified versions) */
-    @keyframes fade_out {
-      to {
-        opacity: 0;
-      }
-    }
-
-    @keyframes shrink_fade {
-      to {
-        transform: scale(0.85);
-        opacity: 0;
-      }
-    }
-
-    @keyframes slide_away {
-      to {
-        transform: translateX(15%); /* Or some other appropriate value */
-        opacity: 0;
-      }
-    }
-
-    @keyframes wiggle_spin {
-      0%,
-      100% {
-        transform: rotate(0deg);
-      }
-      50% {
-        transform: rotate(60deg); /* Example value */
-      }
-    }
-
-    @keyframes pulse_glow {
-      0% {
-        filter: drop-shadow(0 0 0px var(--glow, white)); /* Added default for --glow */
-      }
-      50% {
-        filter: drop-shadow(0 0 10px var(--glow, white)); /* Added default for --glow */
-      }
-      100% {
-        opacity: 0;
-      }
-    }
-  </style>
-
-  <!-- Howler.js for audio playback -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js" integrity="sha512-xi/RZRIF/S0hJ+yJJYuZ5yk6/8pCiRlEXZzoguSMl+vk2i3m6UjUO/WcZ11blRL/O+rnj94JRGwt/CHbc9+6EA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Baby Playroom</title>
+    <link rel="stylesheet" href="public/styles.css">
+    <link rel="manifest" href="manifest.webmanifest">
+    <style>
+        /* Basic styles to ensure fullscreen and no scrollbars */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg1, #FFB3BA); /* Default pastel */
+        }
+        #game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden; /* Crucial for animal wrap-around */
+        }
+        #parent-menu-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            background-color: rgba(0,0,0,0.3);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 16px;
+            line-height: 24px;
+            text-align: center;
+            cursor: pointer;
+            opacity: 0.6;
+            z-index: 1000; /* Ensure it's above animals */
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999; /* Below button, above animals */
+        }
+        #padlock-target {
+            width: 64px; /* As per spec */
+            height: 64px; /* As per spec */
+            background-color: #ccc; /* Placeholder, style as needed */
+            border-radius: 10px;
+            margin-bottom: 20px; /* Space between padlock and settings */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px; /* For padlock icon if using text/emoji */
+        }
+        #settings {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        #settings input[type="range"] {
+            width: 80%;
+            margin-bottom: 15px;
+        }
+        #settings .btn-row button {
+            padding: 10px 15px;
+            margin: 0 5px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+        }
+        #settings .btn-row button.active {
+            background-color: #a0a0a0;
+            color: white;
+        }
+        .animal { /* Basic animal style for visibility, app.js will handle specifics */
+            position: absolute;
+            font-size: 60px; /* Default, will be randomized by JS */
+            cursor: pointer;
+            user-select: none; /* Prevent text selection on tap */
+            will-change: transform; /* Performance hint */
+        }
+    </style>
 </head>
-
 <body>
-  <!-- Main play‑field (empty; animals injected via JS) -->
-  <div id="game"></div>
-
-  <!-- Parent icon (top‑right) -->
-  <button id="parent-btn" class="fixed top-2 right-2 z-50 w-8 h-8 flex items-center justify-center bg-white/40 rounded text-xl select-none">
-    ✕
-  </button>
-
-  <!-- Dim overlay + unlock badge (hidden by default) -->
-  <div id="dim" class="fixed inset-0 bg-black/40 hidden z-40"></div>
-  <div id="unlock" class="fixed top-2 right-2 hidden z-50 w-12 h-12 bg-white/60 rounded-full flex items-center justify-center text-2xl text-gray-800">
-    ✕
-  </div>
-
-  <!-- Settings panel (center overlay) -->
-  <div id="settings" class="fixed inset-0 flex items-center justify-center z-50 hidden">
-    <div class="bg-white/90 backdrop-blur rounded-xl p-6 w-11/12 max-w-md space-y-6">
-      <!-- Volume -->
-      <div>
-        <label class="block font-semibold mb-2">Volume</label>
-        <input id="volume-slider" type="range" min="0" max="100" value="70" class="w-full accent-blue-500">
-      </div>
-      <!-- Session length -->
-      <div>
-        <label class="block font-semibold mb-2">Session Length</label>
-        <div class="flex space-x-2">
-          <button data-min="3" class="session-btn px-3 py-2 rounded bg-gray-200">3&nbsp;min</button>
-          <button data-min="5" class="session-btn px-3 py-2 rounded bg-gray-200">5&nbsp;min</button>
-          <button data-min="10" class="session-btn px-3 py-2 rounded bg-blue-500 text-white">10&nbsp;min</button>
-        </div>
-      </div>
-      <!-- Resume button -->
-      <div class="flex justify-center">
-        <button id="resume" class="px-4 py-2 bg-green-500 text-white rounded">Resume</button>
-      </div>
+    <div id="game-container">
+        <!-- Animals will be spawned here by app.js -->
     </div>
-  </div>
 
-  <!-- JavaScript -->
-  <script>
-    /* --------------------------------------------------
-     *  CONFIGURATION & DATA
-     * -------------------------------------------------- */
-    const EFFECT_IDS = [
-      "fade_out",
-      "shrink_fade",
-      "sparkle_burst", // not fully implemented – falls back to fade
-      "confetti_pop",  // not fully implemented – falls back to fade
-      "bounce_drop",   // not fully implemented – falls back to fade
-      "particle_dissolve", // not fully implemented – falls back to fade
-      "pulse_glow",
-      "wiggle_spin",
-      "slide_away",
-      "star_trail"     // not fully implemented – falls back to fade
-    ];
+    <button id="parent-menu-button">X</button>
 
-    const PASTELS = [
-      "#FFB3BA",
-      "#FFDFBA",
-      "#FFFFBA",
-      "#BAFFC9",
-      "#BAE1FF",
-      "#E3BAFF",
-      "#FFD1DC",
-      "#C1FFD7",
-      "#FBE7C6",
-      "#D3C0FF"
-    ];
+    <div id="overlay" hidden>
+        <div id="padlock-target">🔑</div> <!-- Padlock emoji or an SVG/image -->
+        <div id="settings" hidden>
+           <label for="vol">Volume</label>
+           <input type="range" id="vol" name="vol" min="0" max="100" value="70">
+           <div class="btn-row">
+             <button data-min="3">3 min</button>
+             <button data-min="5">5 min</button>
+             <button data-min="10" class="active">10 min</button>
+           </div>
+           <p id="session-toast" hidden>Time for a cuddle!</p>
+        </div>
+    </div>
 
-    const animals = [
-      { emoji: "🐱", appear: "https://sound-effects-media.bbcrewind.co.uk/mp3/01011751.mp3", tap: "https://sound-effects-media.bbcrewind.co.uk/mp3/01011754.mp3" },
-      { emoji: "🐶", appear: "https://sound-effects-media.bbcrewind.co.uk/mp3/01003046.mp3", tap: "https://sound-effects-media.bbcrewind.co.uk/mp3/01003039.mp3" },
-      { emoji: "🐑", appear: "https://sound-effects-media.bbcrewind.co.uk/mp3/01019012.mp3", tap: "https://sound-effects-media.bbcrewind.co.uk/mp3/01019008.mp3" },
-      { emoji: "🐄", appear: "https://sound-effects-media.bbcrewind.co.uk/mp3/01009165.mp3", tap: "https://sound-effects-media.bbcrewind.co.uk/mp3/01009159.mp3" },
-      { emoji: "🐦", appear: "https://sound-effects-media.bbcrewind.co.uk/mp3/01021022.mp3", tap: "https://sound-effects-media.bbcrewind.co.uk/mp3/01021031.mp3" },
-      { emoji: "🐤", appear: "https://sound-effects-media.bbcrewind.co.uk/mp3/01021038.mp3", tap: "https://sound-effects-media.bbcrewind.co.uk/mp3/01021040.mp3" },
-      { emoji: "🦆", appear: "https://sound-effects-media.bbcrewind.co.uk/mp3/01014014.mp3", tap: "https://sound-effects-media.bbcrewind.co.uk/mp3/01014018.mp3" },
-      { emoji: "🐸", appear: "https://sound-effects-media.bbcrewind.co.uk/mp3/01015001.mp3", tap: "https://sound-effects-media.bbcrewind.co.uk/mp3/01015004.mp3" },
-      { emoji: "🐰", appear: "https://sound-effects-media.bbcrewind.co.uk/mp3/01022005.mp3", tap: "https://sound-effects-media.bbcrewind.co.uk/mp3/01022009.mp3" },
-      { emoji: "🐧", appear: "https://sound-effects-media.bbcrewind.co.uk/mp3/01017012.mp3", tap: "https://sound-effects-media.bbcrewind.co.uk/mp3/01017016.mp3" }
-    ];
-
-    /* --------------------------------------------------
-     *  DOM ELEMENT REFERENCES
-     * -------------------------------------------------- */
-    const game = document.getElementById("game");
-    const parentBtn = document.getElementById("parent-btn");
-    const dim = document.getElementById("dim");
-    const unlock = document.getElementById("unlock");
-    const settings = document.getElementById("settings");
-    const volumeSlider = document.getElementById("volume-slider");
-    const resumeBtn = document.getElementById("resume");
-    const sessionBtns = document.querySelectorAll(".session-btn");
-
-    /* --------------------------------------------------
-     *  STATE VARIABLES
-     * -------------------------------------------------- */
-    let sessionMinutes = 10;
-    let masterVolume = 0.7;
-    let activeAnimals = 0;
-    let spawnInterval;
-    let sessionTimeout;
-    let firstInteraction = false;
-
-    /* --------------------------------------------------
-     *  HELPER FUNCTIONS
-     * -------------------------------------------------- */
-    const rand = (min, max) => Math.random() * (max - min) + min;
-    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-    function applyRandomBackground() {
-      let c1 = pick(PASTELS), c2 = pick(PASTELS);
-      while (c2 === c1) c2 = pick(PASTELS);
-      document.body.style.setProperty("--bg1", c1);
-      document.body.style.setProperty("--bg2", c2);
-      // background-image already defined in CSS uses these vars
-    }
-
-    applyRandomBackground();
-
-    /* --------------------------------------------------
-     *  SPAWN & MOTION
-     * -------------------------------------------------- */
-    function setNewDestination(el) {
-      const dx = rand(-window.innerWidth * 0.2, window.innerWidth * 0.2);
-      const dy = rand(-window.innerHeight * 0.2, window.innerHeight * 0.2);
-      el.style.setProperty("--dx", `${dx}px`);
-      el.style.setProperty("--dy", `${dy}px`);
-      // next cycle duration
-      el.style.setProperty("--cycle", `${rand(6, 8)}s`);
-    }
-
-    function spawnAnimal() {
-      if (activeAnimals >= 10) return;
-      const data = pick(animals);
-      const span = document.createElement("span");
-      span.className = "animal";
-      span.textContent = data.emoji;
-
-      // size & position
-      const size = rand(60, 120);
-      span.style.fontSize = `${size}px`;
-      span.style.width = `${size}px`;
-      span.style.height = `${size}px`;
-      span.style.left = `${rand(0, window.innerWidth - size)}px`;
-      span.style.top = `${rand(0, window.innerHeight - size)}px`;
-
-      // initial motion vars
-      span.style.setProperty("--sx", "0px");
-      span.style.setProperty("--sy", "0px");
-      setNewDestination(span);
-
-      game.appendChild(span);
-      activeAnimals++;
-
-      // Play appear sound
-      if (data.appear) new Howl({ src: [data.appear], html5: true, volume: masterVolume * 0.8 }).play();
-
-      // Every drift cycle, update destination (organic walk) AND handle wrap-around
-      span.addEventListener("animationiteration", () => {
-        const el = span;
-        const rect = el.getBoundingClientRect();
-        // Use offsetWidth/Height as they reflect the actual dimensions set via style
-        const elWidth = el.offsetWidth;
-        const elHeight = el.offsetHeight;
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-
-        // Check and apply wrap-around for horizontal movement
-        if (rect.right < 0) { // Fully left of screen
-          el.style.left = viewportWidth + 'px'; // Re-position to appear from the right
-        } else if (rect.left > viewportWidth) { // Fully right of screen
-          el.style.left = -elWidth + 'px'; // Re-position to appear from the left
-        }
-
-        // Check and apply wrap-around for vertical movement
-        if (rect.bottom < 0) { // Fully above screen
-          el.style.top = viewportHeight + 'px'; // Re-position to appear from the bottom
-        } else if (rect.top > viewportHeight) { // Fully below screen
-          el.style.top = -elHeight + 'px'; // Re-position to appear from the top
-        }
-        
-        // After potential wrap-around, set a new destination for the drift animation
-        setNewDestination(el);
-      });
-
-      // Handle tap → despawn
-      span.addEventListener("pointerdown", () => handleTap(span, data));
-    }
-
-    function handleTap(el, data) {
-      // Play tap sound
-      if (data.tap) new Howl({ src: [data.tap], html5: true, volume: masterVolume }).play();
-
-      // Pick a despawn effect
-      const effect = pick(EFFECT_IDS);
-      el.style.animation = `${effect} 0.7s forwards`;
-
-      setTimeout(() => {
-        el.remove();
-        activeAnimals--;
-      }, 700);
-    }
-
-    /* --------------------------------------------------
-     *  GAME LOOP & SESSION CONTROL
-     * -------------------------------------------------- */
-    function startLoop() {
-      spawnInterval = setInterval(() => {
-        if (activeAnimals < 10) spawnAnimal();
-        applyRandomBackground();
-      }, 10_000);
-    }
-
-    function startSession() {
-      if (sessionTimeout) clearTimeout(sessionTimeout);
-      startLoop();
-      sessionTimeout = setTimeout(() => pauseSession(), sessionMinutes * 60_000);
-    }
-
-    function pauseSession() {
-      clearInterval(spawnInterval);
-      document.querySelectorAll(".animal").forEach((el) => el.remove());
-      activeAnimals = 0;
-      showSettings();
-    }
-
-    /* --------------------------------------------------
-     *  PARENT CONTROLS – ICON, UNLOCK SWIPE, SETTINGS
-     * -------------------------------------------------- */
-    parentBtn.addEventListener("click", () => {
-      dim.classList.remove("hidden");
-      unlock.classList.remove("hidden");
-
-      let unlocked = false;
-      const hit = () => {
-        unlocked = true;
-        cleanup();
-        showSettings();
-      };
-
-      function move(e) {
-        const rect = unlock.getBoundingClientRect();
-        if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-          hit();
-        }
-      }
-
-      function cleanup() {
-        dim.classList.add("hidden");
-        unlock.classList.add("hidden");
-        document.removeEventListener("pointermove", move);
-      }
-
-      document.addEventListener("pointermove", move);
-      setTimeout(() => {
-        if (!unlocked) cleanup();
-      }, 3000);
-    });
-
-    function showSettings() {
-      settings.classList.remove("hidden");
-    }
-
-    /* Volume slider → Howler volume */
-    volumeSlider.addEventListener("input", (e) => {
-      masterVolume = e.target.value / 100;
-      Howler.volume(masterVolume);
-    });
-
-    /* Session length buttons */
-    sessionBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        sessionBtns.forEach((b) => b.classList.remove("bg-blue-500", "text-white"));
-        btn.classList.add("bg-blue-500", "text-white");
-        sessionMinutes = parseInt(btn.dataset.min, 10);
-      });
-    });
-
-    /* Resume */
-    resumeBtn.addEventListener("click", () => {
-      settings.classList.add("hidden");
-      startSession();
-    });
-
-    /* --------------------------------------------------
-     *  FIRST‑RUN INITIALISATION
-     * -------------------------------------------------- */
-    Howler.volume(masterVolume);
-
-    // Spawn a few animals immediately
-    for (let i = 0; i < 5; i++) spawnAnimal();
-    startSession();
-
-    // Enter fullscreen + lock to landscape on first interaction
-    function requestFS() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().then(() => {
-          if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock("landscape").catch(() => { /* ignore */ });
-          }
-        }).catch(() => { /* ignore */ });
-      }
-    }
-
-    window.addEventListener("pointerdown", () => {
-      if (!firstInteraction) {
-        firstInteraction = true;
-        requestFS();
-      }
-    }, { once: true });
-
-    /* --------------------------------------------------
-     *  LIGHT PWA – SERVICE WORKER REGISTRATION
-     * -------------------------------------------------- */
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(registration => {
-          console.log('ServiceWorker registration successful with scope: ', registration.scope);
-        })
-        .catch(error => {
-          console.log('ServiceWorker registration failed: ', error);
-        });
-    }
-  </script>
+    <script src="https://cdn.jsdelivr.net/npm/howler@2.2.3/dist/howler.core.min.js"></script>
+    <script src="public/sounds.js" type="module"></script>
+    <script src="public/app.js" type="module"></script>
 </body>
 </html>
