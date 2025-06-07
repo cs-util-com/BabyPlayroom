@@ -13,20 +13,22 @@ class BabyPlayroom {
         this.gameRunning = false;
         this.volume = 0.5;
         this.soundCache = new Map();
+        this.soundLoading = new Set(); // Track which sounds are currently being loaded
+        this.soundsEnabled = true; // Allow disabling sounds if API fails
         this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         
-        // Animal data from specification
+        // Animal data from specification (now with search terms for Openverse)
         this.animalData = [
-            { name: 'Cat', emoji: '🐱', codePoint: 'U+1F431', appearSound: 'https://bbcsfx.acropolis.org.uk/assets/01011751.wav', tapSound: 'https://bbcsfx.acropolis.org.uk/assets/01011754.wav' },
-            { name: 'Dog', emoji: '🐶', codePoint: 'U+1F436', appearSound: 'https://bbcsfx.acropolis.org.uk/assets/01003046.wav', tapSound: 'https://bbcsfx.acropolis.org.uk/assets/01003039.wav' },
-            { name: 'Sheep', emoji: '🐑', codePoint: 'U+1F411', appearSound: 'https://bbcsfx.acropolis.org.uk/assets/01019012.wav', tapSound: 'https://bbcsfx.acropolis.org.uk/assets/01019008.wav' },
-            { name: 'Cow', emoji: '🐄', codePoint: 'U+1F404', appearSound: 'https://bbcsfx.acropolis.org.uk/assets/01009165.wav', tapSound: 'https://bbcsfx.acropolis.org.uk/assets/01009159.wav' },
-            { name: 'Bird', emoji: '🐦', codePoint: 'U+1F426', appearSound: 'https://bbcsfx.acropolis.org.uk/assets/01021022.wav', tapSound: 'https://bbcsfx.acropolis.org.uk/assets/01021031.wav' },
-            { name: 'Chick', emoji: '🐤', codePoint: 'U+1F424', appearSound: 'https://bbcsfx.acropolis.org.uk/assets/01021038.wav', tapSound: 'https://bbcsfx.acropolis.org.uk/assets/01021040.wav' },
-            { name: 'Duck', emoji: '🦆', codePoint: 'U+1F986', appearSound: 'https://bbcsfx.acropolis.org.uk/assets/01014014.wav', tapSound: 'https://bbcsfx.acropolis.org.uk/assets/01014018.wav' },
-            { name: 'Frog', emoji: '🐸', codePoint: 'U+1F438', appearSound: 'https://bbcsfx.acropolis.org.uk/assets/01015001.wav', tapSound: 'https://bbcsfx.acropolis.org.uk/assets/01015004.wav' },
-            { name: 'Rabbit', emoji: '🐰', codePoint: 'U+1F430', appearSound: 'https://bbcsfx.acropolis.org.uk/assets/01022005.wav', tapSound: 'https://bbcsfx.acropolis.org.uk/assets/01022009.wav' },
-            { name: 'Penguin', emoji: '🐧', codePoint: 'U+1F427', appearSound: 'https://bbcsfx.acropolis.org.uk/assets/01017012.wav', tapSound: 'https://bbcsfx.acropolis.org.uk/assets/01017016.wav' }
+            { name: 'Cat', emoji: '🐱', codePoint: 'U+1F431', searchTerms: ['cat meow', 'cat purr', 'kitten'] },
+            { name: 'Dog', emoji: '🐶', codePoint: 'U+1F436', searchTerms: ['dog bark', 'dog woof', 'puppy'] },
+            { name: 'Sheep', emoji: '🐑', codePoint: 'U+1F411', searchTerms: ['sheep baa', 'lamb bleat', 'sheep'] },
+            { name: 'Cow', emoji: '🐄', codePoint: 'U+1F404', searchTerms: ['cow moo', 'cattle moo', 'cow'] },
+            { name: 'Bird', emoji: '🐦', codePoint: 'U+1F426', searchTerms: ['bird chirp', 'bird tweet', 'bird song'] },
+            { name: 'Chick', emoji: '🐤', codePoint: 'U+1F424', searchTerms: ['chick peep', 'baby bird', 'chicken chick'] },
+            { name: 'Duck', emoji: '🦆', codePoint: 'U+1F986', searchTerms: ['duck quack', 'mallard quack', 'duck'] },
+            { name: 'Frog', emoji: '🐸', codePoint: 'U+1F438', searchTerms: ['frog ribbit', 'frog croak', 'toad'] },
+            { name: 'Rabbit', emoji: '🐰', codePoint: 'U+1F430', searchTerms: ['rabbit hop', 'bunny', 'rabbit sound'] },
+            { name: 'Penguin', emoji: '🐧', codePoint: 'U+1F427', searchTerms: ['penguin call', 'penguin waddle', 'penguin'] }
         ];
         
         // Tap effect IDs from specification
@@ -45,9 +47,13 @@ class BabyPlayroom {
         await this.setupOrientation();
         await this.enterFullscreen();
         this.setupEventListeners();
-        await this.preloadSounds();
+        
+        // Start the game immediately without waiting for sounds
         this.hideLoading();
         this.startGame();
+        
+        // Load sounds in the background
+        this.initializeSounds();
     }
     
     async setupOrientation() {
@@ -208,52 +214,118 @@ class BabyPlayroom {
         });
     }
     
-    async preloadSounds() {
-        const loadPromises = [];
-        
-        for (const animal of this.animalData) {
-            // Load appear sound
-            loadPromises.push(this.loadSound(animal.appearSound, `${animal.name}_appear`));
-            // Load tap sound
-            loadPromises.push(this.loadSound(animal.tapSound, `${animal.name}_tap`));
-        }
-        
+    async initializeSounds() {
         try {
-            await Promise.allSettled(loadPromises); // Use allSettled to not fail on individual sound failures
-            console.log('Sound preloading completed');
-        } catch (error) {
-            console.error('Error during sound preloading:', error);
-        }
-    }
-    
-    loadSound(url, key) {
-        return new Promise((resolve, reject) => {
-            if (this.soundCache.has(key)) {
-                resolve(this.soundCache.get(key));
+            // Check if Openverse client is available
+            if (!window.openverseClient) {
+                console.warn('Openverse client not available, sounds will be disabled');
+                this.soundsEnabled = false;
                 return;
             }
             
-            console.log('Loading sound:', url);
+            console.log('Initializing sounds with Openverse API...');
+            
+            // Load sounds for each animal in the background
+            for (const animal of this.animalData) {
+                this.loadAnimalSounds(animal);
+            }
+        } catch (error) {
+            console.error('Error initializing sounds:', error);
+            this.soundsEnabled = false;
+        }
+    }
+    
+    async loadAnimalSounds(animalData) {
+        try {
+            // Load appear sound (first search term)
+            const appearKey = `${animalData.name}_appear`;
+            if (!this.soundCache.has(appearKey) && !this.soundLoading.has(appearKey)) {
+                this.soundLoading.add(appearKey);
+                this.searchAndLoadSound(animalData.searchTerms[0], appearKey);
+            }
+            
+            // Load tap sound (second search term if available, otherwise first)
+            const tapKey = `${animalData.name}_tap`;
+            if (!this.soundCache.has(tapKey) && !this.soundLoading.has(tapKey)) {
+                this.soundLoading.add(tapKey);
+                const searchTerm = animalData.searchTerms[1] || animalData.searchTerms[0];
+                this.searchAndLoadSound(searchTerm, tapKey);
+            }
+        } catch (error) {
+            console.error(`Error loading sounds for ${animalData.name}:`, error);
+        }
+    }
+    
+    async searchAndLoadSound(searchTerm, cacheKey) {
+        try {
+            const searchResults = await window.openverseClient.audio.search({
+                q: searchTerm,
+                license: 'cc0,pdm', // Only public domain and CC0 for baby app
+                category: 'sound_effect',
+                mature: false,
+                page_size: 5
+            });
+            
+            if (searchResults.results && searchResults.results.length > 0) {
+                // Try the first few results until we find one that loads
+                for (const result of searchResults.results.slice(0, 3)) {
+                    try {
+                        await this.loadSoundFromUrl(result.url, cacheKey);
+                        console.log(`Loaded sound for ${cacheKey} from ${result.url}`);
+                        break; // Success, stop trying other results
+                    } catch (error) {
+                        console.warn(`Failed to load sound from ${result.url}:`, error);
+                        continue; // Try next result
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(`Error searching for sound "${searchTerm}":`, error);
+        } finally {
+            this.soundLoading.delete(cacheKey);
+        }
+    }
+    
+    async loadSoundFromUrl(url, cacheKey) {
+        return new Promise((resolve, reject) => {
+            if (this.soundCache.has(cacheKey)) {
+                resolve(this.soundCache.get(cacheKey));
+                return;
+            }
+            
             const sound = new Howl({
                 src: [url],
                 volume: this.volume,
+                format: ['mp3', 'wav', 'ogg'], // Accept multiple formats
+                html5: true, // Use HTML5 audio for better compatibility
                 onload: () => {
-                    this.soundCache.set(key, sound);
+                    this.soundCache.set(cacheKey, sound);
                     resolve(sound);
                 },
                 onloaderror: (id, error) => {
-                    console.error('Failed to load sound:', url, error);
-                    reject(error);
+                    reject(new Error(`Failed to load sound from ${url}: ${error}`));
                 }
             });
         });
     }
     
     playSound(soundKey) {
+        if (!this.soundsEnabled) {
+            return; // Sounds disabled, fail silently
+        }
+        
         const sound = this.soundCache.get(soundKey);
         if (sound) {
             sound.volume(this.volume);
             sound.play();
+        } else {
+            // Sound not loaded yet, try to load it on demand
+            const animalName = soundKey.split('_')[0];
+            const animalData = this.animalData.find(a => a.name === animalName);
+            if (animalData && !this.soundLoading.has(soundKey)) {
+                console.log(`Sound ${soundKey} not ready, loading on demand...`);
+                this.loadAnimalSounds(animalData);
+            }
         }
     }
     

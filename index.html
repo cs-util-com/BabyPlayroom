@@ -23,6 +23,13 @@
     <!-- Howler.js for audio -->
     <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
     
+    <!-- Openverse API Client -->
+    <script type="module">
+        // Make Openverse client available globally
+        import { createClient } from "https://esm.run/@openverse/api-client@0.0.1-a1";
+        window.openverseClient = createClient();
+    </script>
+    
     <!-- Main styles -->
     <link rel="stylesheet" href="style.css">
 </head>
