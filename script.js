@@ -258,20 +258,36 @@ class BabyPlayroom {
     
     async searchAndLoadSound(searchTerm, cacheKey) {
         try {
-            const searchResults = await window.openverseClient.audio.search({
-                q: searchTerm,
-                license: 'cc0,pdm', // Only public domain and CC0 for baby app
-                category: 'sound_effect',
-                mature: false,
-                page_size: 5
+            // Check if Openverse client is available
+            if (!window.openverseClient) {
+                console.log(`Skipping sound search for "${searchTerm}" - Openverse client not available`);
+                return;
+            }
+            
+            // Use the correct function-style API call for published version
+            const response = await window.openverseClient("GET /v1/audio/", {
+                query: {
+                    q: searchTerm,
+                    category: "sound_effect",
+                    extension: "mp3",
+                    mature: false,
+                    page_size: 5
+                }
             });
             
-            if (searchResults.results && searchResults.results.length > 0) {
+            if (response.error) {
+                console.warn(`API error searching for "${searchTerm}":`, response.error);
+                return;
+            }
+            
+            if (response.data.results && response.data.results.length > 0) {
                 // Try the first few results until we find one that loads
-                for (const result of searchResults.results.slice(0, 3)) {
+                for (const result of response.data.results.slice(0, 3)) {
                     try {
-                        await this.loadSoundFromUrl(result.url, cacheKey);
-                        console.log(`Loaded sound for ${cacheKey} from ${result.url}`);
+                        // Use download_url if available, otherwise fall back to url
+                        const audioUrl = result.download_url || result.url;
+                        await this.loadSoundFromUrl(audioUrl, cacheKey);
+                        console.log(`Loaded sound for ${cacheKey} from ${audioUrl}`);
                         break; // Success, stop trying other results
                     } catch (error) {
                         console.warn(`Failed to load sound from ${result.url}:`, error);
@@ -583,7 +599,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const startHandler = (e) => {
         if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
-        document.body.removeChild(startPrompt);
+        
+        // Remove event listeners to prevent multiple calls
+        document.removeEventListener('click', startHandler);
+        document.removeEventListener('touchstart', startHandler);
+        document.removeEventListener('keydown', startHandler);
+        
+        // Only remove if the element is still in the document
+        if (startPrompt.parentNode) {
+            document.body.removeChild(startPrompt);
+        }
+        
         startApp();
     };
     

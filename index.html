@@ -6,7 +6,7 @@
     <title>Baby Playroom - Tummy Time Fun</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iI0ZGRTVFNSIvPgo8dGV4dCB4PSIxNiIgeT0iMjIiIGZvbnQtZmFtaWx5PSJBcHBsZSBDb2xvciBFbW9qaSwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+QoTwvdGV4dD4KPC9zdmc+">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iI0ZGRTVFNSIvPgo8dGV4dCB4PSIxNiIgeT0iMjIiIGZvcnQtZmFtaWx5PSJBcHBsZSBDb2xvciBFbW9qaSwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+QoTwvdGV4dD4KPC9zdmc+">
     
     <!-- PWA Meta Tags -->
     <meta name="description" content="A gentle tummy-time motivator for babies 6-18 months with friendly animals and sounds">
@@ -25,9 +25,10 @@
     
     <!-- Openverse API Client -->
     <script type="module">
-        // Make Openverse client available globally
-        import { createClient } from "https://esm.run/@openverse/api-client@0.0.1-a1";
-        window.openverseClient = createClient();
+        // Load Openverse client using the correct export name for version 0.0.1-a1
+        import { OpenverseClient } from "https://esm.run/@openverse/api-client@0.0.1-a1";
+        window.openverseClient = OpenverseClient();
+        console.log('Openverse client loaded successfully');
     </script>
     
     <!-- Main styles -->
