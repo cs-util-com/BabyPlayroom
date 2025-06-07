@@ -48,7 +48,7 @@
     /* Drift keyframe – the element animates between two translate values that JS rewrites every cycle */
     @keyframes drift {
       to {
-        transform: translate(var(--dx), var(--dy));
+        transform: translate(var(--dx, 0), var(--dy, 0));
       }
     }
 
@@ -68,7 +68,7 @@
 
     @keyframes slide_away {
       to {
-        transform: translateX(15%);
+        transform: translateX(15%); /* Or some other appropriate value */
         opacity: 0;
       }
     }
@@ -79,16 +79,16 @@
         transform: rotate(0deg);
       }
       50% {
-        transform: rotate(60deg);
+        transform: rotate(60deg); /* Example value */
       }
     }
 
     @keyframes pulse_glow {
       0% {
-        filter: drop-shadow(0 0 0px var(--glow));
+        filter: drop-shadow(0 0 0px var(--glow, white)); /* Added default for --glow */
       }
       50% {
-        filter: drop-shadow(0 0 10px var(--glow));
+        filter: drop-shadow(0 0 10px var(--glow, white)); /* Added default for --glow */
       }
       100% {
         opacity: 0;
@@ -389,28 +389,16 @@
     }, { once: true });
 
     /* --------------------------------------------------
-     *  LIGHT PWA – INLINE SERVICE WORKER
+     *  LIGHT PWA – SERVICE WORKER REGISTRATION
      * -------------------------------------------------- */
     if ("serviceWorker" in navigator) {
-      const swCode = `
-        const CACHE = 'baby-motivator-v1';
-        const CORE = self.location.pathname === '/' ? ['./'] : ['.'];
-        self.addEventListener('install', e => {
-          e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)));
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        })
+        .catch(error => {
+          console.log('ServiceWorker registration failed: ', error);
         });
-        self.addEventListener('fetch', e => {
-          e.respondWith(
-            caches.match(e.request).then(r => r || fetch(e.request).then(res => {
-              if (e.request.url.endsWith('.mp3')) {
-                const clone = res.clone();
-                caches.open(CACHE).then(c => c.put(e.request, clone));
-              }
-              return res;
-            }))
-          );
-        });
-      `;
-      navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode], { type: 'text/javascript' })));
     }
   </script>
 </body>
