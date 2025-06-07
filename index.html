@@ -2,120 +2,135 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Baby Playroom</title>
-    <link rel="stylesheet" href="public/styles.css">
-    <link rel="manifest" href="manifest.webmanifest">
-    <style>
-        /* Basic styles to ensure fullscreen and no scrollbars */
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: var(--bg1, #FFB3BA); /* Default pastel */
-        }
-        #game-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            overflow: hidden; /* Crucial for animal wrap-around */
-        }
-        #parent-menu-button {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 24px;
-            height: 24px;
-            background-color: rgba(0,0,0,0.3);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            font-size: 16px;
-            line-height: 24px;
-            text-align: center;
-            cursor: pointer;
-            opacity: 0.6;
-            z-index: 1000; /* Ensure it's above animals */
-        }
-        #overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.7);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 999; /* Below button, above animals */
-        }
-        #padlock-target {
-            width: 64px; /* As per spec */
-            height: 64px; /* As per spec */
-            background-color: #ccc; /* Placeholder, style as needed */
-            border-radius: 10px;
-            margin-bottom: 20px; /* Space between padlock and settings */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 32px; /* For padlock icon if using text/emoji */
-        }
-        #settings {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        #settings input[type="range"] {
-            width: 80%;
-            margin-bottom: 15px;
-        }
-        #settings .btn-row button {
-            padding: 10px 15px;
-            margin: 0 5px;
-            cursor: pointer;
-            border: 1px solid #ccc;
-            background-color: #f0f0f0;
-        }
-        #settings .btn-row button.active {
-            background-color: #a0a0a0;
-            color: white;
-        }
-        .animal { /* Basic animal style for visibility, app.js will handle specifics */
-            position: absolute;
-            font-size: 60px; /* Default, will be randomized by JS */
-            cursor: pointer;
-            user-select: none; /* Prevent text selection on tap */
-            will-change: transform; /* Performance hint */
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baby Playroom - Tummy Time Fun</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iI0ZGRTVFNSIvPgo8dGV4dCB4PSIxNiIgeT0iMjIiIGZvbnQtZmFtaWx5PSJBcHBsZSBDb2xvciBFbW9qaSwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+QoTwvdGV4dD4KPC9zdmc+">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="A gentle tummy-time motivator for babies 6-18 months with friendly animals and sounds">
+    <meta name="theme-color" content="#FFE5E5">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- OpenMoji Color Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="style.css" as="style">
+    <link rel="preload" href="script.js" as="script">
+    
+    <!-- Howler.js for audio -->
+    <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+    
+    <!-- Main styles -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-container">
-        <!-- Animals will be spawned here by app.js -->
-    </div>
-
-    <button id="parent-menu-button">X</button>
-
-    <div id="overlay" hidden>
-        <div id="padlock-target">🔑</div> <!-- Padlock emoji or an SVG/image -->
-        <div id="settings" hidden>
-           <label for="vol">Volume</label>
-           <input type="range" id="vol" name="vol" min="0" max="100" value="70">
-           <div class="btn-row">
-             <button data-min="3">3 min</button>
-             <button data-min="5">5 min</button>
-             <button data-min="10" class="active">10 min</button>
-           </div>
-           <p id="session-toast" hidden>Time for a cuddle!</p>
+    <!-- Game Container -->
+    <div id="gameContainer" class="game-container">
+        <!-- Animals will be spawned here dynamically -->
+        
+        <!-- Parent Controls -->
+        <div id="escapeIcon" class="escape-icon" role="button" tabindex="0" aria-label="Open parent settings">
+            ✕
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/howler@2.2.3/dist/howler.core.min.js"></script>
-    <script src="public/sounds.js" type="module"></script>
-    <script src="public/app.js" type="module"></script>
+    
+    <!-- Settings Overlay -->
+    <div id="settingsOverlay" class="settings-overlay hidden" role="dialog" aria-labelledby="settingsTitle" aria-modal="true">
+        <!-- Padlock Target -->
+        <div id="padlockTarget" class="padlock-target" role="button" tabindex="0" aria-label="Swipe to unlock settings">
+            🔒
+        </div>
+        
+        <!-- Settings Panel -->
+        <div id="settingsPanel" class="settings-panel hidden">
+            <h2 id="settingsTitle">Parent Settings</h2>
+            
+            <!-- Volume Control -->
+            <div class="volume-control">
+                <label for="volumeSlider">Master Volume</label>
+                <input 
+                    id="volumeSlider" 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value="50" 
+                    class="volume-slider"
+                    role="slider"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="50"
+                    aria-label="Master volume control"
+                >
+                <span id="volumeValue" class="volume-value">50%</span>
+            </div>
+            
+            <!-- Session Length Buttons -->
+            <div class="session-controls">
+                <h3>Session Length</h3>
+                <div class="session-buttons">
+                    <button 
+                        id="session3" 
+                        class="session-btn" 
+                        data-minutes="3"
+                        aria-pressed="false"
+                    >3 min</button>
+                    <button 
+                        id="session5" 
+                        class="session-btn" 
+                        data-minutes="5"
+                        aria-pressed="false"
+                    >5 min</button>
+                    <button 
+                        id="session10" 
+                        class="session-btn active" 
+                        data-minutes="10"
+                        aria-pressed="true"
+                    >10 min</button>
+                </div>
+            </div>
+            
+            <!-- Close Settings -->
+            <button id="closeSettings" class="close-settings-btn" aria-label="Close settings and resume game">
+                Resume Game
+            </button>
+        </div>
+    </div>
+    
+    <!-- Session Pause Overlay -->
+    <div id="sessionPauseOverlay" class="session-pause-overlay hidden" role="dialog" aria-labelledby="sessionPauseTitle" aria-modal="true">
+        <div class="session-pause-content">
+            <h2 id="sessionPauseTitle">Tummy Time Complete!</h2>
+            <p>Your little one has been playing for the recommended time.</p>
+            <button id="resumeSession" class="resume-btn">Continue Playing</button>
+            <button id="openSettingsFromPause" class="settings-btn">Settings</button>
+        </div>
+    </div>
+    
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="loading-indicator">
+        <div class="loading-spinner"></div>
+        <p>Loading sounds and preparing for fun...</p>
+    </div>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then((registration) => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch((registrationError) => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+    
+    <!-- Main Application Script -->
+    <script src="script.js"></script>
 </body>
 </html>

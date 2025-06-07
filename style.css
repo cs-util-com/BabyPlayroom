@@ -1,0 +1,517 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #FFE5E5 0%, #E5F3FF 50%, #F0FFE5 100%);
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Game Container */
+.game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    cursor: none;
+}
+
+/* Animal Elements */
+.animal {
+    position: absolute;
+    font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-size: 60px; /* Will be randomized between 60-120px */
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    z-index: 10;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.animal:hover {
+    transform: scale(1.1);
+}
+
+.animal:active {
+    transform: scale(0.95);
+}
+
+/* Tap Effects */
+@keyframes fadeOut {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(1.2); }
+}
+
+@keyframes shrinkFade {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0); }
+}
+
+@keyframes sparkleBurst {
+    0% { opacity: 1; transform: scale(1) rotate(0deg); }
+    50% { opacity: 0.8; transform: scale(1.3) rotate(180deg); }
+    100% { opacity: 0; transform: scale(1.5) rotate(360deg); }
+}
+
+@keyframes confettiPop {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.4) translateY(-20px); }
+    100% { opacity: 0; transform: scale(1.2) translateY(30px); }
+}
+
+@keyframes bounceDrop {
+    0% { opacity: 1; transform: scale(1) translateY(0); }
+    30% { transform: scale(1.1) translateY(-30px); }
+    60% { transform: scale(0.9) translateY(20px); }
+    100% { opacity: 0; transform: scale(0.8) translateY(50px); }
+}
+
+@keyframes particleDissolve {
+    0% { opacity: 1; transform: scale(1); filter: blur(0px); }
+    100% { opacity: 0; transform: scale(1.3); filter: blur(10px); }
+}
+
+@keyframes pulseGlow {
+    0% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 rgba(255, 255, 255, 0.7); }
+    50% { transform: scale(1.2); box-shadow: 0 0 30px rgba(255, 255, 255, 0.7); }
+    100% { opacity: 0; transform: scale(1.4); box-shadow: 0 0 50px rgba(255, 255, 255, 0); }
+}
+
+@keyframes wiggleSpin {
+    0% { opacity: 1; transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(-15deg) scale(1.1); }
+    50% { transform: rotate(15deg) scale(1.2); }
+    75% { transform: rotate(-10deg) scale(1.1); }
+    100% { opacity: 0; transform: rotate(360deg) scale(0); }
+}
+
+@keyframes slideAway {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to { opacity: 0; transform: translateX(200px) scale(0.5); }
+}
+
+@keyframes starTrail {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.2) rotate(180deg); }
+    100% { opacity: 0; transform: scale(2) rotate(360deg); }
+}
+
+/* Apply effect classes */
+.fade-out { animation: fadeOut 1s ease-out forwards; }
+.shrink-fade { animation: shrinkFade 1s ease-in forwards; }
+.sparkle-burst { animation: sparkleBurst 1s ease-out forwards; }
+.confetti-pop { animation: confettiPop 1s ease-out forwards; }
+.bounce-drop { animation: bounceDrop 1s ease-out forwards; }
+.particle-dissolve { animation: particleDissolve 1s ease-out forwards; }
+.pulse-glow { animation: pulseGlow 1s ease-out forwards; }
+.wiggle-spin { animation: wiggleSpin 1s ease-out forwards; }
+.slide-away { animation: slideAway 1s ease-out forwards; }
+.star-trail { animation: starTrail 1s ease-out forwards; }
+
+/* Parent Controls */
+.escape-icon {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 0, 0, 0.3);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 100;
+    transition: background-color 0.3s ease;
+    touch-action: manipulation;
+}
+
+.escape-icon:hover,
+.escape-icon:focus {
+    background: rgba(0, 0, 0, 0.5);
+    outline: 2px solid #fff;
+}
+
+/* Settings Overlay */
+.settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-overlay.hidden {
+    display: none;
+}
+
+/* Padlock Target */
+.padlock-target {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    touch-action: manipulation;
+}
+
+.padlock-target:hover,
+.padlock-target:focus {
+    background: rgba(255, 255, 255, 1);
+    transform: translate(-50%, -50%) scale(1.1);
+    outline: 3px solid #007AFF;
+}
+
+/* Settings Panel */
+.settings-panel {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.settings-panel.hidden {
+    display: none;
+}
+
+.settings-panel h2 {
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 24px;
+}
+
+.settings-panel h3 {
+    margin: 20px 0 10px;
+    color: #555;
+    font-size: 18px;
+}
+
+/* Volume Control */
+.volume-control {
+    margin-bottom: 25px;
+}
+
+.volume-control label {
+    display: block;
+    margin-bottom: 10px;
+    color: #666;
+    font-weight: 500;
+}
+
+.volume-slider {
+    width: 100%;
+    height: 8px;
+    border-radius: 5px;
+    background: #ddd;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    margin-bottom: 10px;
+}
+
+.volume-slider:hover,
+.volume-slider:focus {
+    opacity: 1;
+    outline: 2px solid #007AFF;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #007AFF;
+    cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #007AFF;
+    cursor: pointer;
+    border: none;
+}
+
+.volume-value {
+    color: #666;
+    font-weight: bold;
+}
+
+/* Session Controls */
+.session-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 25px;
+}
+
+.session-btn {
+    min-width: 60px;
+    min-height: 44px;
+    padding: 10px 15px;
+    border: 2px solid #007AFF;
+    background: white;
+    color: #007AFF;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    touch-action: manipulation;
+}
+
+.session-btn:hover,
+.session-btn:focus {
+    outline: 2px solid #0051D5;
+    transform: translateY(-2px);
+}
+
+.session-btn.active {
+    background: #007AFF;
+    color: white;
+}
+
+.close-settings-btn {
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 20px;
+    background: #007AFF;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    touch-action: manipulation;
+}
+
+.close-settings-btn:hover,
+.close-settings-btn:focus {
+    background: #0051D5;
+    outline: 3px solid #B3D9FF;
+}
+
+/* Session Pause Overlay */
+.session-pause-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.session-pause-overlay.hidden {
+    display: none;
+}
+
+.session-pause-content {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+.session-pause-content h2 {
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 28px;
+}
+
+.session-pause-content p {
+    margin-bottom: 25px;
+    color: #666;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.resume-btn,
+.settings-btn {
+    min-width: 120px;
+    min-height: 44px;
+    padding: 12px 20px;
+    margin: 5px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    touch-action: manipulation;
+}
+
+.resume-btn {
+    background: #34C759;
+    color: white;
+}
+
+.resume-btn:hover,
+.resume-btn:focus {
+    background: #28A745;
+    outline: 3px solid #B3E5C7;
+}
+
+.settings-btn {
+    background: #007AFF;
+    color: white;
+}
+
+.settings-btn:hover,
+.settings-btn:focus {
+    background: #0051D5;
+    outline: 3px solid #B3D9FF;
+}
+
+/* Loading Indicator */
+.loading-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #FFE5E5 0%, #E5F3FF 50%, #F0FFE5 100%);
+    z-index: 400;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 18px;
+}
+
+.loading-indicator.hidden {
+    display: none;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007AFF;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .animal {
+        animation: none !important;
+        transition: opacity 0.5s ease;
+    }
+    
+    .loading-spinner {
+        animation: none;
+        border-top-color: #666;
+    }
+    
+    /* Replace movement animations with gentle opacity changes */
+    .fade-out,
+    .shrink-fade,
+    .sparkle-burst,
+    .confetti-pop,
+    .bounce-drop,
+    .particle-dissolve,
+    .pulse-glow,
+    .wiggle-spin,
+    .slide-away,
+    .star-trail {
+        animation: gentleFade 1s ease-out forwards;
+    }
+    
+    @keyframes gentleFade {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+}
+
+/* Mobile Landscape Optimization */
+@media screen and (orientation: landscape) and (max-height: 600px) {
+    .settings-panel {
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 20px;
+    }
+    
+    .session-pause-content {
+        padding: 30px;
+    }
+    
+    .escape-icon {
+        top: 10px;
+        right: 10px;
+    }
+}
+
+/* High DPI Display Support */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .animal {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* Focus Indicators for Accessibility */
+*:focus {
+    outline: 2px solid #007AFF;
+    outline-offset: 2px;
+}
+
+button:focus,
+.escape-icon:focus,
+.padlock-target:focus {
+    outline: 3px solid #007AFF;
+    outline-offset: 2px;
+}
+
+/* Touch Target Minimum Size Compliance */
+button,
+.escape-icon,
+.padlock-target,
+.animal {
+    min-width: 44px;
+    min-height: 44px;
+}
