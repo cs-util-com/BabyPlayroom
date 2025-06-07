@@ -259,8 +259,33 @@
       // Play appear sound
       if (data.appear) new Howl({ src: [data.appear], html5: true, volume: masterVolume * 0.8 }).play();
 
-      // Every drift cycle, update destination (organic walk)
-      span.addEventListener("animationiteration", () => setNewDestination(span));
+      // Every drift cycle, update destination (organic walk) AND handle wrap-around
+      span.addEventListener("animationiteration", () => {
+        const el = span;
+        const rect = el.getBoundingClientRect();
+        // Use offsetWidth/Height as they reflect the actual dimensions set via style
+        const elWidth = el.offsetWidth;
+        const elHeight = el.offsetHeight;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        // Check and apply wrap-around for horizontal movement
+        if (rect.right < 0) { // Fully left of screen
+          el.style.left = viewportWidth + 'px'; // Re-position to appear from the right
+        } else if (rect.left > viewportWidth) { // Fully right of screen
+          el.style.left = -elWidth + 'px'; // Re-position to appear from the left
+        }
+
+        // Check and apply wrap-around for vertical movement
+        if (rect.bottom < 0) { // Fully above screen
+          el.style.top = viewportHeight + 'px'; // Re-position to appear from the bottom
+        } else if (rect.top > viewportHeight) { // Fully below screen
+          el.style.top = -elHeight + 'px'; // Re-position to appear from the top
+        }
+        
+        // After potential wrap-around, set a new destination for the drift animation
+        setNewDestination(el);
+      });
 
       // Handle tap → despawn
       span.addEventListener("pointerdown", () => handleTap(span, data));
