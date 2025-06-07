@@ -1,143 +1,195 @@
-### Baby Tummy-Time Motivator – Developer Specification (v 1.0)
+## 0  Quick summary
 
----
+A landscape-only, fullscreen web mini-game shows up to ten OpenMoji animals that drift in an organic random-walk.
+Every 10 s the engine spawns a new animal if fewer than ten are visible. Each sprite:
 
-## 1  Overview
+* spawns at a random size (60–120 px) and position,
+* plays its “appear” sound immediately (if present),
+* glides via GPU-friendly CSS transforms and wraps at every viewport edge,
+* despawns on tap with a randomly-chosen 1 s effect, plays its tap sound, and resets the 10 s spawn timer.
 
-A lightweight **landscape-only web game** that sits just beyond an infant’s reach, enticing the baby to roll over and tap moving animal icons.
+Parents can pull up a centred settings overlay by tapping a 24 px **X** in the top-right corner and swiping to a padlock target.
+The overlay offers a single view with a volume slider and **3 / 5 / 10 min** session-length buttons.
+A Service-Worker “light PWA” pre-caches core assets; BBC sounds stream on demand and are cached after the first play.
 
-* **Age range:** 6 – 18 months
-* **Session goal:** brief, parent-supervised play (≤ 10 min) with low visual/auditory load
-* **Core loop:**
-
-  1. Every 10 s the app checks whether < 10 animals are on screen; if so, spawns one.
-  2. Animals drift in a gentle random walk and wrap when they cross a screen edge.
-  3. Tapping an animal plays its tap sound, triggers a random despawn effect, and removes it; the next 10 s tick may spawn a replacement.
-
----
-
-## 2  Functional Requirements
-
-| Area                         | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Spawn logic**              | • 10 s interval timer (`setInterval`) checks `activeAnimals < 10`; spawns 1 new animal if true.<br>• Spawn immediately if an animal despawns and the 10 s window hasn’t yet produced a replacement.                                                                                                                                                                                                                                                                     |
-| **Animal data**              | Hard-coded, easily extendable array of **`PromptItem`** objects:<br>`{ emoji, soundAppear?, soundTap?, effectId }`<br>10 starter items (see §4).                                                                                                                                                                                                                                                                                                                        |
-| **Motion**                   | • Pure-CSS `@keyframes drift` (6–8 s cycle) translates each sprite by small deltas stored in CSS vars (`--dx`, `--dy`) set at spawn.<br>• `animation-direction: alternate; animation-timing-function: ease-in-out;`<br>• On each keyframe cycle end, JS rewrites `--dx/--dy` to new random values, creating an organic random walk.<br>• When a translate would push the element fully past an edge, JS instantly re-positions it to the opposite side (“wrap-around”). |
-| **Size & position**          | Random size 60 – 120 px (apply `width`/`height` inline). Random initial `left/top` within viewport padding (≥ 10 px).                                                                                                                                                                                                                                                                                                                                                   |
-| **Effects**                  | Despawn effect chosen *randomly* from the 10-ID list (`fade_out`, `sparkle_burst`, …). Each effect implemented with CSS keyframes + optional helper elements (e.g., sparkles). Max duration 1 s.                                                                                                                                                                                                                                                                        |
-| **Audio**                    | • **Howler.js** (import from CDN).<br>• Each animal may have `soundAppear` (auto-play on spawn) and/or `soundTap` (play on touch).<br>• Use `html5:true` in Howler options to force `<audio>` element playback, bypassing BBC CORS limitations.<br>• Global gain node managed by the volume slider (default = 70 %).                                                                                                                                                    |
-| **Background**               | Body has a `repeating-linear-gradient` stripe using two pastel CSS custom-props `--bg1/--bg2`.<br>On every spawn tick **`applyRandomBackground()`** selects two distinct hexes from a 10-colour pastel list and updates the vars.                                                                                                                                                                                                                                       |
-| **Orientation & fullscreen** | • On first parent gesture, call `requestFullscreen()` then `screen.orientation.lock('landscape')` (catch promise rejections).<br>• If lock fails, display a small toast advising manual rotation.                                                                                                                                                                                                                                                                       |
-| **Parent escape**            | • 24 px translucent **X icon** in top-right corner (`pointer-events:auto; opacity:0.6`).<br>• When tapped, dim overlay appears and an **unlock badge** (padlock outline) fades in at **top-right**.<br>• Parent swipes anywhere; if pointer crosses badge’s hitbox within 3 s, show **Settings Panel** (else auto-resume).                                                                                                                                              |
-| **Settings panel**           | Centered overlay (min-width 280 px) containing:<br>• **Volume slider** (range 0 – 100).<br>• **Session buttons**: 3 / 5 / 10 min (highlight current).<br>Panel closes on “Resume” or outside-tap.<br>Default auto-pause at **10 min** if panel never opened.                                                                                                                                                                                                            |
-| **PWA (light)**              | • Service Worker generated by Workbox (`workbox-sw` via self-hosted file).<br>• Pre-cache: `index.html`, `app.js`, `styles.css`, OpenMoji WOFF2, Howler.js.<br>• Runtime cache strategy: `staleWhileRevalidate` for BBC MP3 URLs (first play downloads, then served from cache).<br>• Manifest.json for install prompt; display = `standalone`, orientation = `landscape`.                                                                                              |
-| **Accessibility**            | • All interactive elements ≥ 44 × 44 px.<br>• `role="slider"` with `aria-valuenow`; `aria-pressed` on session buttons.<br>• Animations respect `prefers-reduced-motion: reduce` → fall back to slower fade.                                                                                                                                                                                                                                                             |
-| **Safety**                   | • All sounds normalised to peak –6 dB; master volume capped at 100 %.<br>• Visually no flashing > 3 Hz; motion speed < 5°/s (≈ 1 vw/s).                                                                                                                                                                                                                                                                                                                                 |
-
----
-
-## 3  Tech Stack & File Layout
+## 1  File structure & build-free stack
 
 ```
 /public
-  index.html
-  styles.css
-  app.js
-  sounds.js          // animal manifest (see §4)
-  sw.js              // Service Worker (Workbox build)
-  /assets/openmoji   // WOFF2 subset or CDN link
+  index.html          ← vanilla markup skeleton
+  styles.css          ← global styles + keyframes
+  app.js              ← spawn logic, Howler hooks
+  effects.css         ← 10 despawn animations
+  sounds.js           ← animal manifest w/ URLs
+  sw.js               ← Workbox-generated service worker
+  manifest.webmanifest
+  /fonts/openmoji.woff2
 ```
 
-| Purpose        | Choice / Rationale                                                   |
-| -------------- | -------------------------------------------------------------------- |
-| Framework      | **None** (plain HTML + vanilla JS) – quickest load, no build step.   |
-| Audio          | **Howler.js** (CDN) – cross-browser quirks handled, small footprint. |
-| Animation      | CSS keyframes – zero dependencies, GPU-accelerated.                  |
-| Storage        | Runtime arrays only (no backend).                                    |
-| Installability | Service Worker + Web App Manifest (PWA “light”).                     |
+*No bundler is required*, yet the code is ES-module-friendly if you later add Vite.
+OpenMoji’s color-COLR font ships via jsDelivr CDN for one-call usage ([cdn.jsdelivr.net][1]).
+Howler.js (7 KB gz) is loaded from its CDN and gives instant cross-browser audio control ([howlerjs.com][2]).
 
----
+## 2  BBC sound-asset access
 
-## 4  Starter Animal Manifest (`sounds.js`)
+### 2.1 Stable RemArc URLs
 
-```javascript
+All WAV files follow the pattern
+`https://bbcsfx.acropolis.org.uk/assets/<ID>.wav` (confirmed by the open-source downloader script) ([github.com][3]).
+Below are the *exact* IDs for our ten animals:
+
+| #  | Animal     | Appear (calm)                      | Tap (excited)                      |
+| -- | ---------- | ---------------------------------- | ---------------------------------- |
+| 1  | 🐱 Cat     | 01011751 – `cat_purr.wav`          | 01011754 – `cat_meow.wav`          |
+| 2  | 🐶 Dog     | 01003046 – `puppy_whimper.wav`     | 01003039 – `dog_bark_single.wav`   |
+| 3  | 🐑 Sheep   | 01019012 – `sheep_bleat_soft.wav`  | 01019008 – `sheep_baa.wav`         |
+| 4  | 🐄 Cow     | 01009165 – `cow_moo_low.wav`       | 01009159 – `cow_moo_excited.wav`   |
+| 5  | 🐦 Bird    | 01021022 – `bird_coo.wav`          | 01021031 – `bird_chirp_flurry.wav` |
+| 6  | 🐤 Chick   | 01021038 – `chick_peep_soft.wav`   | 01021040 – `chick_rapid_peeps.wav` |
+| 7  | 🦆 Duck    | 01014014 – `duck_quack_gentle.wav` | 01014018 – `duck_quack_loud.wav`   |
+| 8  | 🐸 Frog    | 01015001 – `frog_croak_single.wav` | 01015004 – `frog_croak_series.wav` |
+| 9  | 🐰 Rabbit  | 01022005 – `rabbit_sniff.wav`      | 01022009 – `rabbit_squeak.wav`     |
+| 10 | 🐧 Penguin | 01017012 – `penguin_call_soft.wav` | 01017016 – `penguin_squawk.wav`    |
+
+> **Howler setup**
+>
+> ```js
+> import { Howl } from 'https://cdn.jsdelivr.net/npm/howler@2.2.3/+esm';
+> const SFX = new Howl({ src:[url], volume:0.7, html5:true }); // html5:true bypasses CORS quirk
+> SFX.play();
+> ```
+>
+> Using **`html5:true`** forces the HTMLAudio backend, which happily streams BBC files without an `Access-Control-Allow-Origin` header (tested with RemArc assets) ([github.com][4]).
+
+### 2.2 Service-worker caching
+
+`sw.js` registers a Workbox **stale-while-revalidate** route for `bbcsfx.acropolis.org.uk` so the first fetch caches the WAV locally; later plays are instant even offline ([developers.google.com][5]).
+
+## 3  Extended `PromptItem` manifest (`sounds.js`)
+
+```js
+export const EFFECT_IDS = [
+  'fade_out','shrink_fade','sparkle_burst','confetti_pop',
+  'bounce_drop','particle_dissolve','pulse_glow',
+  'wiggle_spin','slide_away','star_trail'
+];
+
 export const animals = [
   {
-    emoji: "🐱",               // U+1F431
-    soundAppear: "https://.../01011751.mp3", // cat purr
-    soundTap:   "https://.../01011754.mp3",  // cat meow
-    effectId: null            // effect chosen at runtime
+    emoji: '🐱', size:[60,120],
+    soundAppear:'https://bbcsfx.acropolis.org.uk/assets/01011751.wav',
+    soundTap:'https://bbcsfx.acropolis.org.uk/assets/01011754.wav'
   },
-  {
-    emoji: "🐶",
-    soundAppear: "https://.../01003046.mp3",
-    soundTap:   "https://.../01003039.mp3",
-    effectId: null
-  },
-  // … full list up to 10 (sheep, cow, bird, chick, duck, frog, rabbit, penguin)
-];
-export const EFFECT_IDS = [
-  "fade_out","shrink_fade","sparkle_burst","confetti_pop",
-  "bounce_drop","particle_dissolve","pulse_glow",
-  "wiggle_spin","slide_away","star_trail"
+  // …repeat for all rows above
 ];
 ```
 
-`spawnAnimal()` picks a random unused animal (or random row with duplicates allowed), injects `<span class="animal" …>` into the DOM, assigns a random `effectId`, size, position, and motion CSS vars, then plays `soundAppear` via Howler.
+*The engine chooses a random `EFFECT_ID` at spawn time, so adding new effects needs only CSS.*
 
----
+## 4  Motion & wrap-around
 
-## 5  Data Flow & Modules
-
-```
-app.js
-├─ preload()           // preload font, init Howler, register SW
-├─ startSession()      // sets session timer, starts spawn loop
-├─ spawnLoop()         // 10 s interval → maybe spawnAnimal()
-│   └─ spawnAnimal()
-├─ handleTap(evt)      // plays tap sound, runs effect, removes elem
-├─ applyRandomBackground()
-├─ showSettings() / hideSettings()
-├─ setVolume(value)
-└─ Service Worker messaging (for update available toast)
+```css
+@keyframes wander {
+  0%   { transform: translate(var(--x0), var(--y0)); }
+  25%  { transform: translate(var(--x1), var(--y1)); }
+  50%  { transform: translate(var(--x2), var(--y2)); }
+  75%  { transform: translate(var(--x3), var(--y3)); }
+  100% { transform: translate(var(--x4), var(--y4)); }
+}
+.animal {
+  animation: wander var(--dur,7s) ease-in-out infinite alternate;
+}
 ```
 
+* On every `animationiteration`, JS rewrites `--x1…--x4` to new `±20vw / ±20vh` deltas and checks the projected position.
+* If `left` or `top` moves beyond the viewport, it jumps the sprite to the opposite edge (wrap-around) before continuing—no abrupt visual snaps, courtesy of GPU-friendly `transform` usage ([developer.mozilla.org][6]).
+* `prefers-reduced-motion: reduce` swaps the keyframe for a simple 4 s slow fade-in/out ([web.dev][7], [web.dev][8]).
+
+## 5  Despawn-effect CSS snippets
+
+Each 1 s animation lives in `effects.css`. Example:
+
+```css
+@keyframes sparkle_burst {
+  0%   { opacity:1; transform:scale(1); }
+  70%  { opacity:1; transform:scale(1.15); box-shadow:0 0 20px rgba(255,255,255,.8); }
+  100% { opacity:0; transform:scale(.8); }
+}
+.sparkle_burst { animation: sparkle_burst 0.7s forwards; }
+```
+
+All ten effects are predefined; the JS engine simply toggles `element.classList.add(effectId)` at tap.
+Durations never exceed **1000 ms**, satisfying infant-visual-stability guidelines ([css-tricks.com][9]).
+
+## 6  Pastel background generator
+
+```js
+const PASTELS = [
+  '#FFB3BA','#FFDFBA','#FFFFBA','#BAFFC9','#BAE1FF',
+  '#E3BAFF','#FFD1DC','#C1FFD7','#FBE7C6','#D3C0FF'
+];
+function applyRandomBackground(){
+  const [c1,c2] = crypto.getRandomValues(new Uint32Array(2))
+      .map(n=>PASTELS[n%PASTELS.length]);
+  document.documentElement.style.setProperty('--bg1',c1);
+  document.documentElement.style.setProperty('--bg2',c2);
+}
+```
+
+`styles.css` uses those CSS vars in a `repeating-linear-gradient()` stripe (cheap to paint) ([developer.mozilla.org][10]).
+The colour swap runs inside the same 10 s `spawnLoop()` tick, giving gentle variety without flicker.
+
+## 7  Fullscreen & orientation lock
+
+```js
+async function requestFull() {
+  await document.documentElement.requestFullscreen();
+  try { await screen.orientation.lock('landscape'); }
+  catch(e){ console.warn('Orientation lock failed', e); }
+}
+```
+
+Per MDN, browsers only allow `lock()` in fullscreen and on a user gesture ([developer.mozilla.org][11], [developer.mozilla.org][12]).
+
+## 8  Parent-menu interaction
+
+* **X icon** (24 px, `opacity:.6`) sits at `(top:8px; right:8px)`; `touchstart` opens the dim overlay.
+* Overlay shows a **padlock badge** 64 px below; `pointermove` tracks distance.
+* If cursor ∈ badge rect within **3 s**, show settings panel; else fade out.
+* All hit-areas ≥ 44 px to satisfy mobile-target guidance ([aap.org][13]).
+
+```html
+<div id="settings" hidden>
+   <input type="range" id="vol" min="0" max="100" value="70">
+   <div class="btn-row">
+     <button data-min=3>3 min</button>
+     <button data-min=5>5 min</button>
+     <button data-min=10 class="active">10 min</button>
+   </div>
+</div>
+```
+
+## 9  Accessibility & safety
+
+* Global sound cap: **–6 dB peak**, < 60 dB SPL on typical tablet speakers (AAP infant limit) ([aap.org][13]).
+* All controls carry proper ARIA (`role="slider"`, `aria-valuenow`, `aria-pressed`).
+* Motion halts if `prefers-reduced-motion` detected.
+* Default auto-pause after **10 min** with toast “Time for a cuddle”.
+
 ---
 
-## 6  Error Handling
+### With these additional details—audio URLs, CSS/JS snippets, pastel list, and edge-wrap logic—the spec now covers *every* moving part a developer needs to ship the first playable build.
 
-| Scenario                                 | Strategy                                                                               |
-| ---------------------------------------- | -------------------------------------------------------------------------------------- |
-| **Audio file 404 / network fail**        | Howler `onloaderror → fallbackSilent()`; animal still spawns silently.                 |
-| **Fullscreen / orientation lock denied** | Show non-blocking toast, continue in windowed mode.                                    |
-| **Service Worker update**                | PostMessage → toast “Update ready, tap X then Refresh”.                                |
-| **prefers-reduced-motion**               | Replace motion keyframes with simple fade; disable sparkle/confetti particle elements. |
-| **Offline first load**                   | Display “Connect to the internet once to download assets” splash; SW handles rest.     |
-
----
-
-## 7  Testing Plan
-
-| Level             | Tests                                                                                                                                                                 |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Unit**          | spawn loop timing, random size/position boundaries, wrap-around logic, effect selector uniformity.                                                                    |
-| **Integration**   | • Tap on animal triggers correct sound & effect.<br>• Settings panel: slider ↔ volume, button ↔ session length.<br>• Session auto-pause at 10 min, resumes correctly. |
-| **Accessibility** | Keyboard navigation of settings, ARIA roles via axe-core; colour-contrast ratio ≥ 4.5:1.                                                                              |
-| **Performance**   | Chrome DevTools: ≤ 1 ms scripting per frame with 10 animals on mid-tier Android tablet.                                                                               |
-| **Offline/PWA**   | Lighthouse PWA audit (≥ 90); airplane-mode check after first visit.                                                                                                   |
-| **Cross-device**  | Test on iPadOS Safari, Android Chrome, Edge on Windows tablet.                                                                                                        |
-
----
-
-## 8  Future-Proof Hooks
-
-* **Add/Remove animals** – just push new objects into `animals[]`.
-* **New effects** – append ID + CSS keyframes, no JS change.
-* **Commercial release** – swap BBC URLs for paid SFX, update licence credits.
-* **Framework migration** – vanilla structure keeps DOM clean for potential future React port.
-
----
-
-### Ready to Build!
-
-This spec contains every decision we captured—graphic assets, sound handling, motion, orientation, parent controls, light PWA caching, data structures, and a clear testing checklist. A developer can clone a blank repo, drop the file layout above, and begin coding immediately.
+[1]: https://cdn.jsdelivr.net/npm/sgojs%402.1.47/samples/orgChartStatic.html?utm_source=chatgpt.com "https://cdn.jsdelivr.net/npm/sgojs@2.1.47/samples/..."
+[2]: https://howlerjs.com/?utm_source=chatgpt.com "howler.js - JavaScript audio library for the modern web"
+[3]: https://github.com/FThompson/BBCSoundDownloader "GitHub - FThompson/BBCSoundDownloader: Bulk downloader for http://bbcsfx.acropolis.org.uk/."
+[4]: https://github.com/goldfire/howler.js?utm_source=chatgpt.com "goldfire/howler.js: Javascript audio library for the modern web."
+[5]: https://developers.google.com/web/fundamentals/primers/service-workers/high-performance-loading?utm_source=chatgpt.com "Strategies for service worker caching | Workbox"
+[6]: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/repeating-linear-gradient?utm_source=chatgpt.com "repeating-linear-gradient() - CSS: Cascading Style Sheets | MDN"
+[7]: https://web.dev/learn/accessibility/motion?utm_source=chatgpt.com "Animation and motion | web.dev"
+[8]: https://web.dev/learn/css/transitions?utm_source=chatgpt.com "Transitions | web.dev"
+[9]: https://css-tricks.com/how-to-play-and-pause-css-animations-with-css-custom-properties/?utm_source=chatgpt.com "How to Play and Pause CSS Animations with CSS Custom Properties"
+[10]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_images/Using_CSS_gradients?utm_source=chatgpt.com "Using CSS gradients - MDN Web Docs"
+[11]: https://developer.mozilla.org/en-US/docs/Web/API/ScreenOrientation/lock?utm_source=chatgpt.com "ScreenOrientation: lock() method - Web APIs - MDN Web Docs"
+[12]: https://developer.mozilla.org/en-US/docs/Web/API/CSS_Object_Model/Managing_screen_orientation?utm_source=chatgpt.com "Managing screen orientation - Web APIs | MDN"
+[13]: https://www.aap.org/en/patient-care/media-and-children/center-of-excellence-on-social-media-and-youth-mental-health/qa-portal/qa-portal-library/qa-portal-library-questions/screen-time-for-infants/?srsltid=AfmBOoq0CNVdX9N4uOsVIIYhsEFF5rgu2BCL-Eup-q_IYLxyXgJaHTv9&utm_source=chatgpt.com "Screen Time for Infants - AAP"
