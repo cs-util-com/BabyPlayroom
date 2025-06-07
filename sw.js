@@ -15,30 +15,6 @@ const CORE_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'
 ];
 
-// BBC Sound Effects URLs that will be cached on demand
-const SOUND_URLS = [
-  'https://bbcsfx.acropolis.org.uk/assets/01011751.wav', // Cat purr
-  'https://bbcsfx.acropolis.org.uk/assets/01011754.wav', // Cat meow
-  'https://bbcsfx.acropolis.org.uk/assets/01003046.wav', // Dog calm
-  'https://bbcsfx.acropolis.org.uk/assets/01003039.wav', // Dog excited
-  'https://bbcsfx.acropolis.org.uk/assets/01019012.wav', // Sheep calm
-  'https://bbcsfx.acropolis.org.uk/assets/01019008.wav', // Sheep excited
-  'https://bbcsfx.acropolis.org.uk/assets/01009165.wav', // Cow calm
-  'https://bbcsfx.acropolis.org.uk/assets/01009159.wav', // Cow excited
-  'https://bbcsfx.acropolis.org.uk/assets/01021022.wav', // Bird calm
-  'https://bbcsfx.acropolis.org.uk/assets/01021031.wav', // Bird excited
-  'https://bbcsfx.acropolis.org.uk/assets/01021038.wav', // Chick calm
-  'https://bbcsfx.acropolis.org.uk/assets/01021040.wav', // Chick excited
-  'https://bbcsfx.acropolis.org.uk/assets/01014014.wav', // Duck calm
-  'https://bbcsfx.acropolis.org.uk/assets/01014018.wav', // Duck excited
-  'https://bbcsfx.acropolis.org.uk/assets/01015001.wav', // Frog calm
-  'https://bbcsfx.acropolis.org.uk/assets/01015004.wav', // Frog excited
-  'https://bbcsfx.acropolis.org.uk/assets/01022005.wav', // Rabbit calm
-  'https://bbcsfx.acropolis.org.uk/assets/01022009.wav', // Rabbit excited
-  'https://bbcsfx.acropolis.org.uk/assets/01017012.wav', // Penguin calm
-  'https://bbcsfx.acropolis.org.uk/assets/01017016.wav'  // Penguin excited
-];
-
 // Install event - cache core assets
 self.addEventListener('install', event => {
   console.log('Service Worker installing...');
@@ -97,7 +73,7 @@ self.addEventListener('fetch', event => {
 
 // Check if request is for audio
 function isAudioRequest(request) {
-  return request.url.includes('bbcsfx.acropolis.org.uk') || 
+  return request.url.includes('openverse.org') || // Updated to check for Openverse
          request.url.endsWith('.wav') || 
          request.url.endsWith('.mp3');
 }

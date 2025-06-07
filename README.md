@@ -49,25 +49,11 @@ Each entry below *must* be represented by its Unicode code point:
 
 Icons must be rendered at a random size **between 60 px and 120 px** on spawn.
 
-### 4.2 Audio Assets – BBC Sound Effects (RemArc licence)
+### 4.2 Audio Assets – Openverse Audio
 
-All sounds are WAV files hosted at the BBC archive domain ([sound-effects.bbcrewind.co.uk][9], [sound-effects.bbcrewind.co.uk][10]).
-These exact URLs—and only these—must be referenced:
+Sounds will be sourced from Openverse.
 
-| #  | Animal  | *Appear* (calm)                                                  | *Tap* (excited)                                                  |
-| -- | ------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
-| 1  | Cat     | `https://bbcsfx.acropolis.org.uk/assets/01011751.wav` (cat purr) | `https://bbcsfx.acropolis.org.uk/assets/01011754.wav` (cat meow) |
-| 2  | Dog     | `https://bbcsfx.acropolis.org.uk/assets/01003046.wav`            | `https://bbcsfx.acropolis.org.uk/assets/01003039.wav`            |
-| 3  | Sheep   | `https://bbcsfx.acropolis.org.uk/assets/01019012.wav`            | `https://bbcsfx.acropolis.org.uk/assets/01019008.wav`            |
-| 4  | Cow     | `https://bbcsfx.acropolis.org.uk/assets/01009165.wav`            | `https://bbcsfx.acropolis.org.uk/assets/01009159.wav`            |
-| 5  | Bird    | `https://bbcsfx.acropolis.org.uk/assets/01021022.wav`            | `https://bbcsfx.acropolis.org.uk/assets/01021031.wav`            |
-| 6  | Chick   | `https://bbcsfx.acropolis.org.uk/assets/01021038.wav`            | `https://bbcsfx.acropolis.org.uk/assets/01021040.wav`            |
-| 7  | Duck    | `https://bbcsfx.acropolis.org.uk/assets/01014014.wav`            | `https://bbcsfx.acropolis.org.uk/assets/01014018.wav`            |
-| 8  | Frog    | `https://bbcsfx.acropolis.org.uk/assets/01015001.wav`            | `https://bbcsfx.acropolis.org.uk/assets/01015004.wav`            |
-| 9  | Rabbit  | `https://bbcsfx.acropolis.org.uk/assets/01022005.wav`            | `https://bbcsfx.acropolis.org.uk/assets/01022009.wav`            |
-| 10 | Penguin | `https://bbcsfx.acropolis.org.uk/assets/01017012.wav`            | `https://bbcsfx.acropolis.org.uk/assets/01017016.wav`            |
-
-**Licensing note:** The RemArc licence allows personal, educational or research use; commercial distribution requires a separate BBC or Pro SFX agreement ([sound-effects.bbcrewind.co.uk][10], [pitchfork.com][11]).
+**Licensing note:** Ensure compliance with the licensing terms of each individual audio file obtained from Openverse.
 
 ### 4.3 Tap-Despawn Effect IDs
 

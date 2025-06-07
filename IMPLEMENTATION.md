@@ -13,7 +13,7 @@ This is a fully working implementation of the Baby Playroom tummy-time motivator
 
 ### Audio System
 - **Howler.js integration** for simultaneous sound playback
-- **BBC Sound Effects** exactly as specified in the requirements
+- **Openverse Audio** for sound effects
 - **Master volume control** with parent-accessible slider
 - **Audio caching** for offline playback after first use
 
@@ -37,7 +37,7 @@ This is a fully working implementation of the Baby Playroom tummy-time motivator
 - **Visual safety** with gentle animations under 3Hz flash rate
 
 ### Technical Compliance
-- **Exact asset usage** as specified (Unicode code points, BBC URLs)
+- **Exact asset usage** as specified (Unicode code points)
 - **10 tap effects** with random selection as required
 - **Spawn timing** every 10 seconds with max 10 animals
 - **Edge wrapping** behavior for continuous movement
@@ -87,7 +87,7 @@ favicon.ico     - App icon
 ### Dependencies
 - **Howler.js** (2.2.4) - Audio engine loaded from CDN
 - **Noto Color Emoji** - Font for emoji display
-- **BBC Sound Effects** - 20 animal sounds as specified
+- **Openverse Audio** - Animal sounds sourced from Openverse
 
 ### Browser Support
 - **Modern browsers** with ES6+ support
