@@ -53,8 +53,12 @@ describe('AudioManager Integration Tests', () => {
                     // Attempt test instantiation immediately after hoisting
                     try {
                         console.log('TEST_LOG: beforeAll: Attempting test instantiation of hoisted window.OpenverseApiClient.');
-                        const testInstance = new window.OpenverseApiClient();
+                        const testInstance = window.OpenverseApiClient(); // Changed: Remove 'new' keyword
                         console.log('TEST_LOG: beforeAll: Test instantiation SUCCEEDED. Instance:', typeof testInstance);
+                        console.log('TEST_LOG: beforeAll: Test instance keys:', Object.keys(testInstance || {}));
+                        if (testInstance && testInstance.audio) {
+                            console.log('TEST_LOG: beforeAll: Test instance.audio keys:', Object.keys(testInstance.audio));
+                        }
                     } catch (e) {
                         console.error('TEST_LOG: beforeAll: Test instantiation FAILED:', e);
                         console.error('TEST_LOG: beforeAll: window.OpenverseApiClient was (at failure):', String(window.OpenverseApiClient).slice(0,300));
@@ -68,7 +72,7 @@ describe('AudioManager Integration Tests', () => {
                     // Attempt test instantiation
                     try {
                         console.log('TEST_LOG: beforeAll: Attempting test instantiation of direct window.OpenverseApiClient.');
-                        const testInstance = new window.OpenverseApiClient();
+                        const testInstance = window.OpenverseApiClient(); // Changed: Remove 'new' keyword
                         console.log('TEST_LOG: beforeAll: Test instantiation SUCCEEDED (direct). Instance:', typeof testInstance);
                     } catch (e) {
                         console.error('TEST_LOG: beforeAll: Test instantiation FAILED (direct):', e);
