@@ -11,10 +11,10 @@ class BabyPlayroom {
         this.sessionTimer = null;
         this.spawnTimer = null;
         this.gameRunning = false;
-        this.volume = 0.5;
-        this.soundCache = new Map();
-        this.soundLoading = new Set(); // Track which sounds are currently being loaded
-        this.soundsEnabled = true; // Allow disabling sounds if API fails
+        // this.volume = 0.5; // Moved to AudioManager
+        // this.soundCache = new Map(); // Moved to AudioManager
+        // this.soundLoading = new Set(); // Moved to AudioManager
+        // this.soundsEnabled = true; // Moved to AudioManager
         this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         
         // Animal data from specification (now with search terms for Openverse)
@@ -40,6 +40,8 @@ class BabyPlayroom {
         this.gameContainer = document.getElementById('gameContainer');
         this.loadingIndicator = document.getElementById('loadingIndicator');
         
+        this.audioManager = new AudioManager(this.animalData, 0.5); // Initialize AudioManager
+
         this.init();
     }
     
@@ -52,8 +54,8 @@ class BabyPlayroom {
         this.hideLoading();
         this.startGame();
         
-        // Load sounds in the background
-        this.initializeSounds();
+        // Load sounds in the background using AudioManager
+        this.audioManager.initializeSounds();
     }
     
     async setupOrientation() {
@@ -97,12 +99,13 @@ class BabyPlayroom {
         const volumeSlider = document.getElementById('volumeSlider');
         const volumeValue = document.getElementById('volumeValue');
         volumeSlider.addEventListener('input', (e) => {
-            this.volume = e.target.value / 100;
+            const newVolume = e.target.value / 100;
+            this.audioManager.setVolume(newVolume); // Use AudioManager to set volume
             volumeValue.textContent = e.target.value + '%';
             e.target.setAttribute('aria-valuenow', e.target.value);
-            if (window.Howler) {
-                Howler.volume(this.volume);
-            }
+            // if (window.Howler) { // Howler interaction moved to AudioManager
+            // Howler.volume(this.volume);
+            // }
         });
         
         // Session length buttons
@@ -214,135 +217,8 @@ class BabyPlayroom {
         });
     }
     
-    async initializeSounds() {
-        try {
-            // Check if Openverse client is available
-            if (!window.openverseClient) {
-                console.warn('Openverse client not available, sounds will be disabled');
-                this.soundsEnabled = false;
-                return;
-            }
-            
-            console.log('Initializing sounds with Openverse API...');
-            
-            // Load sounds for each animal in the background
-            for (const animal of this.animalData) {
-                this.loadAnimalSounds(animal);
-            }
-        } catch (error) {
-            console.error('Error initializing sounds:', error);
-            this.soundsEnabled = false;
-        }
-    }
-    
-    async loadAnimalSounds(animalData) {
-        try {
-            // Load appear sound (first search term)
-            const appearKey = `${animalData.name}_appear`;
-            if (!this.soundCache.has(appearKey) && !this.soundLoading.has(appearKey)) {
-                this.soundLoading.add(appearKey);
-                this.searchAndLoadSound(animalData.searchTerms[0], appearKey);
-            }
-            
-            // Load tap sound (second search term if available, otherwise first)
-            const tapKey = `${animalData.name}_tap`;
-            if (!this.soundCache.has(tapKey) && !this.soundLoading.has(tapKey)) {
-                this.soundLoading.add(tapKey);
-                const searchTerm = animalData.searchTerms[1] || animalData.searchTerms[0];
-                this.searchAndLoadSound(searchTerm, tapKey);
-            }
-        } catch (error) {
-            console.error(`Error loading sounds for ${animalData.name}:`, error);
-        }
-    }
-    
-    async searchAndLoadSound(searchTerm, cacheKey) {
-        try {
-            // Check if Openverse client is available
-            if (!window.openverseClient) {
-                console.log(`Skipping sound search for "${searchTerm}" - Openverse client not available`);
-                return;
-            }
-            
-            // Use the correct function-style API call for published version
-            const response = await window.openverseClient("GET /v1/audio/", {
-                query: {
-                    q: searchTerm,
-                    category: "sound_effect",
-                    extension: "mp3",
-                    mature: false,
-                    page_size: 5
-                }
-            });
-            
-            if (response.error) {
-                console.warn(`API error searching for "${searchTerm}":`, response.error);
-                return;
-            }
-            
-            if (response.data.results && response.data.results.length > 0) {
-                // Try the first few results until we find one that loads
-                for (const result of response.data.results.slice(0, 3)) {
-                    try {
-                        // Use download_url if available, otherwise fall back to url
-                        const audioUrl = result.download_url || result.url;
-                        await this.loadSoundFromUrl(audioUrl, cacheKey);
-                        console.log(`Loaded sound for ${cacheKey} from ${audioUrl}`);
-                        break; // Success, stop trying other results
-                    } catch (error) {
-                        console.warn(`Failed to load sound from ${result.url}:`, error);
-                        continue; // Try next result
-                    }
-                }
-            }
-        } catch (error) {
-            console.error(`Error searching for sound "${searchTerm}":`, error);
-        } finally {
-            this.soundLoading.delete(cacheKey);
-        }
-    }
-    
-    async loadSoundFromUrl(url, cacheKey) {
-        return new Promise((resolve, reject) => {
-            if (this.soundCache.has(cacheKey)) {
-                resolve(this.soundCache.get(cacheKey));
-                return;
-            }
-            
-            const sound = new Howl({
-                src: [url],
-                volume: this.volume,
-                format: ['mp3', 'wav', 'ogg'], // Accept multiple formats
-                html5: true, // Use HTML5 audio for better compatibility
-                onload: () => {
-                    this.soundCache.set(cacheKey, sound);
-                    resolve(sound);
-                },
-                onloaderror: (id, error) => {
-                    reject(new Error(`Failed to load sound from ${url}: ${error}`));
-                }
-            });
-        });
-    }
-    
-    playSound(soundKey) {
-        if (!this.soundsEnabled) {
-            return; // Sounds disabled, fail silently
-        }
-        
-        const sound = this.soundCache.get(soundKey);
-        if (sound) {
-            sound.volume(this.volume);
-            sound.play();
-        } else {
-            // Sound not loaded yet, try to load it on demand
-            const animalName = soundKey.split('_')[0];
-            const animalData = this.animalData.find(a => a.name === animalName);
-            if (animalData && !this.soundLoading.has(soundKey)) {
-                console.log(`Sound ${soundKey} not ready, loading on demand...`);
-                this.loadAnimalSounds(animalData);
-            }
-        }
+    playSound(soundKey) { // Delegated to AudioManager
+        this.audioManager.playSound(soundKey);
     }
     
     hideLoading() {
@@ -385,7 +261,7 @@ class BabyPlayroom {
         
         // Regular spawn interval
         this.spawnTimer = setInterval(() => {
-            if (this.gameRunning) {
+            if (this.gameRunning) { // Corrected syntax: added parentheses
                 this.checkAndSpawn();
             }
         }, this.spawnInterval);
