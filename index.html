@@ -26,9 +26,10 @@
     <!-- Openverse API Client -->
     <script type="module">
         // Load Openverse client using the correct export name for version 0.0.1-a1
-        import { OpenverseClient } from "https://esm.run/@openverse/api-client@0.0.1-a1";
-        window.openverseClient = OpenverseClient();
-        console.log('Openverse client loaded successfully');
+        import { createClient } from "https://esm.run/@openverse/api-client@0.0.1-a1";
+        // Make the client factory function available as expected by AudioManager
+        window.OpenverseApiClient = createClient;
+        console.log('Openverse client loaded successfully', typeof window.OpenverseApiClient);
     </script>
     
     <!-- Main styles -->

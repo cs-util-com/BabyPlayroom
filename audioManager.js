@@ -23,6 +23,23 @@ class AudioManager {
             console.log('Sounds are disabled, skipping initialization.');
             return;
         }
+        
+        // Wait for the Openverse client to be available (for ESM loading)
+        let attempts = 0;
+        const maxAttempts = 20; // Wait up to 10 seconds (20 * 500ms)
+        while (attempts < maxAttempts && typeof window.OpenverseApiClient !== 'function') {
+            console.log(`AUDIO_MANAGER_LOG: Waiting for Openverse client to load... (attempt ${attempts + 1})`);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            attempts++;
+        }
+        
+        // Check if we timed out waiting for the client
+        if (typeof window.OpenverseApiClient !== 'function') {
+            console.warn('AUDIO_MANAGER_LOG_WARN: Timed out waiting for Openverse client to load. Sounds will be disabled.');
+            this.soundsEnabled = false;
+            return;
+        }
+        
         try {
             // Detailed logging for OpenverseApiClient
             console.log('AUDIO_MANAGER_LOG: In initializeSounds, attempting to get OpenverseApiClient.');
