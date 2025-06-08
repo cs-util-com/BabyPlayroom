@@ -31,6 +31,9 @@ global.Howler = {
 global.window = Object.create(window || {}); // Ensure window object exists for openverseClient
 global.window.openverseClient = jest.fn();
 
+// Mock OpenverseApiClient constructor 
+global.window.OpenverseApiClient = jest.fn(() => global.window.openverseClient);
+
 describe('AudioManager', () => {
     let audioManager;
     const mockAnimalData = [
@@ -43,6 +46,7 @@ describe('AudioManager', () => {
         global.Howl.mockClear();
         global.Howler.volume.mockClear();
         global.window.openverseClient.mockReset(); // Use mockReset to clear all history and behavior
+        global.window.OpenverseApiClient.mockClear();
 
         audioManager = new AudioManager(mockAnimalData, 0.5);
         audioManager.soundsEnabled = true; // Ensure sounds are enabled for tests
@@ -56,14 +60,14 @@ describe('AudioManager', () => {
 
     test('should search for and attempt to load animal sounds via Openverse API', async () => {
         const mockApiResponseAppear = {
-            data: {
+            body: {
                 results: [
                     { download_url: 'http://example.com/cat_meow.mp3', url: 'http://example.com/cat_meow_page.mp3' },
                 ]
             }
         };
         const mockApiResponseTap = {
-            data: {
+            body: {
                 results: [
                     { download_url: 'http://example.com/cat_purr.mp3', url: 'http://example.com/cat_purr_page.mp3' },
                 ]
@@ -80,8 +84,11 @@ describe('AudioManager', () => {
                 if (options && options.params && options.params.q === 'cat purr') {
                     return mockApiResponseTap;
                 }
-                return { data: { results: [] } }; // Default empty response
+                return { body: { results: [] } }; // Default empty response
             });
+
+        // Initialize the openverse client
+        await audioManager.initializeSounds();
 
         const catData = mockAnimalData.find(a => a.name === 'Cat');
         await audioManager.loadAnimalSounds(catData);
@@ -114,10 +121,10 @@ describe('AudioManager', () => {
         expect(global.window.openverseClient).toHaveBeenCalledWith("GET v1/audio/", {
             params: {
                 q: 'cat meow',
-                category: "sound_effect",
-                extension: "mp3",
-                mature: false,
-                page_size: 5
+                extension: "mp3,wav,ogg,aac,m4a,opus",
+                mature: "false",
+                page_size: 5,
+                unstable__include_sensitive_results: "false"
             }
         });
 
@@ -125,10 +132,10 @@ describe('AudioManager', () => {
         expect(global.window.openverseClient).toHaveBeenCalledWith("GET v1/audio/", {
             params: {
                 q: 'cat purr',
-                category: "sound_effect",
-                extension: "mp3",
-                mature: false,
-                page_size: 5
+                extension: "mp3,wav,ogg,aac,m4a,opus",
+                mature: "false",
+                page_size: 5,
+                unstable__include_sensitive_results: "false"
             }
         });
 
@@ -152,38 +159,47 @@ describe('AudioManager', () => {
     });
 
     test('should handle Openverse API error gracefully', async () => {
-        global.window.openverseClient.mockResolvedValueOnce({ error: 'API Error', data: null });
-        global.window.openverseClient.mockResolvedValueOnce({ error: 'API Error', data: null });
+        // Reset the mock to clear any previous calls from initialization
+        global.window.openverseClient.mockReset();
+        global.window.openverseClient.mockRejectedValue(new Error("API Error"));
 
-        const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+        // Initialize the openverse client
+        await audioManager.initializeSounds();
 
         const catData = mockAnimalData.find(a => a.name === 'Cat');
         await audioManager.loadAnimalSounds(catData);
         await new Promise(resolve => setTimeout(resolve, 0)); // Allow async operations
 
-        expect(global.window.openverseClient).toHaveBeenCalledTimes(2);
+        expect(global.window.openverseClient).toHaveBeenCalledTimes(4); // 2 for init + 2 for loadAnimalSounds
         expect(global.Howl).not.toHaveBeenCalled();
         expect(audioManager.soundCache.size).toBe(0);
-        expect(consoleWarnSpy).toHaveBeenCalledWith("API error searching for \"cat meow\":", "API Error");
-        expect(consoleWarnSpy).toHaveBeenCalledWith("API error searching for \"cat purr\":", "API Error");
+        expect(consoleErrorSpy).toHaveBeenCalledWith("Critical error in searchAndLoadSound for \"cat meow\":", "API Error", expect.any(Error));
+        expect(consoleErrorSpy).toHaveBeenCalledWith("Critical error in searchAndLoadSound for \"cat purr\":", "API Error", expect.any(Error));
         
-        consoleWarnSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
     });
 
     test('should handle no sound results from Openverse API', async () => {
-        global.window.openverseClient.mockResolvedValueOnce({ data: { results: [] } });
-        global.window.openverseClient.mockResolvedValueOnce({ data: { results: [] } });
+        // Reset the mock to clear any previous calls from initialization
+        global.window.openverseClient.mockReset();
+        global.window.openverseClient.mockResolvedValue({ body: { results: [] } });
+        
         const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+        // Initialize the openverse client
+        await audioManager.initializeSounds();
 
         const catData = mockAnimalData.find(a => a.name === 'Cat');
         await audioManager.loadAnimalSounds(catData);
         await new Promise(resolve => setTimeout(resolve, 0));
 
-        expect(global.window.openverseClient).toHaveBeenCalledTimes(2);
+        expect(global.window.openverseClient).toHaveBeenCalledTimes(4); // 2 for init + 2 for loadAnimalSounds
         expect(global.Howl).not.toHaveBeenCalled();
         expect(audioManager.soundCache.size).toBe(0);
-        expect(consoleWarnSpy).toHaveBeenCalledWith('No sound results found for "cat meow"');
-        expect(consoleWarnSpy).toHaveBeenCalledWith('No sound results found for "cat purr"');
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('No sound results found for "cat meow"'), 'Full response was:', expect.any(Object));
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('No sound results found for "cat purr"'), 'Full response was:', expect.any(Object));
 
         consoleWarnSpy.mockRestore();
     });
@@ -192,8 +208,11 @@ describe('AudioManager', () => {
         // Pre-load a sound into the cache for testing playSound
         const mockSoundUrl = 'http://example.com/cat_meow.mp3';
         global.window.openverseClient.mockResolvedValueOnce({
-            data: { results: [{ download_url: mockSoundUrl }] }
+            body: { results: [{ download_url: mockSoundUrl }] }
         });
+        
+        // Initialize the openverse client
+        await audioManager.initializeSounds();
         
         const catData = mockAnimalData.find(a => a.name === 'Cat');
         await audioManager.searchAndLoadSound(catData.searchTerms[0], 'Cat_appear');
@@ -214,13 +233,25 @@ describe('AudioManager', () => {
 
     test('playSound should attempt to load a sound on demand if not cached', async () => {
         const mockApiResponse = {
-            data: {
+            body: {
                 results: [{ download_url: 'http://example.com/dog_bark.mp3' }]
             }
         };
+        // Reset the mock to clear any previous calls from initialization
+        global.window.openverseClient.mockReset();
         global.window.openverseClient.mockResolvedValue(mockApiResponse);
 
         const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+        // Initialize the openverse client but don't let it preload sounds for Dog
+        await audioManager.initializeSounds();
+
+        // Clear the spy to only capture calls from playSound
+        consoleLogSpy.mockClear();
+
+        // Make sure Dog_appear is definitely not in cache
+        audioManager.soundCache.delete('Dog_appear');
+        audioManager.soundLoading.delete('Dog_appear');
 
         audioManager.playSound('Dog_appear'); // Dog_appear is not in cache initially
         
@@ -230,9 +261,15 @@ describe('AudioManager', () => {
         // Allow time for the async loadAnimalSounds to be called
         await new Promise(resolve => setTimeout(resolve, 50)); 
 
-        // Verify Openverse client was called for the on-demand load
+        // Verify Openverse client was called for the on-demand load (should have 2 calls: one for appear, one for tap)
         expect(global.window.openverseClient).toHaveBeenCalledWith("GET v1/audio/", expect.objectContaining({
-            params: expect.objectContaining({ q: 'dog bark' })
+            params: expect.objectContaining({ 
+                q: 'dog bark',
+                extension: "mp3,wav,ogg,aac,m4a,opus",
+                mature: "false",
+                page_size: 5,
+                unstable__include_sensitive_results: "false"
+            })
         }));
         
         // Verify Howl was called (eventually)
@@ -264,8 +301,10 @@ describe('AudioManager', () => {
     });
 
     test('should gracefully handle Howler load error', async () => {
-        global.window.openverseClient.mockResolvedValueOnce({
-            data: { results: [{ download_url: 'http://example.com/bad_sound.mp3' }] }
+        // First provide a successful API response so we get to the Howler error
+        global.window.openverseClient.mockReset();
+        global.window.openverseClient.mockResolvedValue({
+            body: { results: [{ download_url: 'http://example.com/bad_sound.mp3' }] }
         });
 
         const originalHowl = global.Howl;
@@ -293,6 +332,9 @@ describe('AudioManager', () => {
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
+        // Initialize the openverse client
+        await audioManager.initializeSounds();
+
         const catData = mockAnimalData.find(a => a.name === 'Cat');
         await audioManager.searchAndLoadSound(catData.searchTerms[0], 'Cat_appear_bad');
         
@@ -304,12 +346,13 @@ describe('AudioManager', () => {
 
         expect(audioManager.soundCache.has('Cat_appear_bad')).toBe(false);
         expect(consoleErrorSpy).toHaveBeenCalledWith(
-            'Howler.js failed to load sound from http://example.com/bad_sound.mp3:',
-            'Simulated load error'
+            'Howler.js failed to load sound from http://example.com/bad_sound.mp3 (cacheKey: Cat_appear_bad):',
+            'Simulated load error',
+            'Sound ID: 123'
         );
         expect(consoleWarnSpy).toHaveBeenCalledWith(
-            'Failed to load sound from http://example.com/bad_sound.mp3:',
-            expect.any(Error)
+            'Failed to load sound from http://example.com/bad_sound.mp3 (Title: N/A, searchTerm: "cat meow"):',
+            'Howler: Failed to load sound from http://example.com/bad_sound.mp3: Simulated load error'
         );
 
         consoleErrorSpy.mockRestore();
