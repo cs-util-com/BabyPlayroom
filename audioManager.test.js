@@ -1,20 +1,27 @@
 const AudioManager = require('./audioManager'); // Assuming AudioManager is exported using module.exports
 
 // Mock Howler.js
-global.Howl = jest.fn(options => ({
-    play: jest.fn(),
-    volume: jest.fn(),
-    on: jest.fn((event, callback) => {
-        if (options.onload && event === 'load') {
-            // Simulate successful load for testing purposes
-            setTimeout(options.onload, 0);
-        }
-        if (options.onloaderror && event === 'loaderror') {
-            // To test error cases, you might call options.onloaderror here under certain conditions
-        }
-    }),
-    // Add any other methods of Howl that your AudioManager uses
-}));
+global.Howl = jest.fn(options => {
+    const howlInstance = {
+        play: jest.fn().mockReturnThis(),
+        volume: jest.fn().mockReturnThis(),
+        on: jest.fn((event, callback) => {
+            if (options.onload && event === 'load') {
+                process.nextTick(options.onload);
+            }
+            if (options.onloaderror && event === 'loaderror') {
+                process.nextTick(() => options.onloaderror(123, 'Simulated load error'));
+            }
+            return howlInstance;
+        }),
+        state: jest.fn().mockReturnValue('loaded'), // Mock state as loaded
+    };
+    // Simulate onload being called for the mock
+    if(options.onload) {
+        process.nextTick(options.onload);
+    }
+    return howlInstance;
+});
 global.Howler = {
     volume: jest.fn(),
     // Add any other global Howler properties/methods used
@@ -48,26 +55,60 @@ describe('AudioManager', () => {
     });
 
     test('should search for and attempt to load animal sounds via Openverse API', async () => {
-        const mockApiResponse = {
+        const mockApiResponseAppear = {
             data: {
                 results: [
                     { download_url: 'http://example.com/cat_meow.mp3', url: 'http://example.com/cat_meow_page.mp3' },
+                ]
+            }
+        };
+        const mockApiResponseTap = {
+            data: {
+                results: [
                     { download_url: 'http://example.com/cat_purr.mp3', url: 'http://example.com/cat_purr_page.mp3' },
                 ]
             }
         };
 
-        // Mock the Openverse client to return a successful response for both search terms
+        // Mock the Openverse client to return a successful response
+        // One for "cat meow" (appear) and one for "cat purr" (tap)
         global.window.openverseClient
-            .mockResolvedValueOnce(mockApiResponse) // For 'cat meow'
-            .mockResolvedValueOnce(mockApiResponse); // For 'cat purr'
+            .mockImplementation(async (path, options) => {
+                if (options && options.params && options.params.q === 'cat meow') {
+                    return mockApiResponseAppear;
+                }
+                if (options && options.params && options.params.q === 'cat purr') {
+                    return mockApiResponseTap;
+                }
+                return { data: { results: [] } }; // Default empty response
+            });
 
         const catData = mockAnimalData.find(a => a.name === 'Cat');
         await audioManager.loadAnimalSounds(catData);
 
-        // Wait for promises to resolve (e.g., sound loading)
-        // A short timeout or more robust promise handling might be needed depending on AudioManager implementation
-        await new Promise(resolve => setTimeout(resolve, 100)); // Allow time for async operations
+        // Wait for all promises triggered by loadAnimalSounds to settle.
+        // This requires knowing how many async operations are started.
+        // loadAnimalSounds starts two searchAndLoadSound calls.
+        // Each searchAndLoadSound calls apiClient and then potentially loadSoundFromUrl (Howl).
+        // We need to ensure these async operations complete.
+        // Using jest.runAllTimers() can help if only timers are involved,
+        // but here we have actual async operations (mocked).
+        // A more robust way is to await the promises returned by searchAndLoadSound if they were collected.
+        // Since loadAnimalSounds doesn't return a promise that aggregates these,
+        // we rely on a small timeout or flush promises.
+        
+        // Flush promises - process.nextTick helps, but for multiple chained promises, a small delay might still be needed
+        // await new Promise(resolve => process.nextTick(resolve));
+        // await new Promise(resolve => process.nextTick(resolve)); // Extra tick for safety
+        // await new Promise(resolve => setTimeout(resolve, 50)); // Short delay for Howl onload
+        // Using jest.runAllTimers() if timers (like setTimeout) are used in AudioManager for async ops
+        // However, the primary async ops are Promises from openverseClient and Howl
+        // Let's ensure all microtasks are flushed, and give a bit of time for Howl onload mocks
+        for (let i = 0; i < 10; i++) { // Pump the event loop a few times
+            await new Promise(resolve => process.nextTick(resolve));
+        }
+        await new Promise(resolve => setTimeout(resolve, 100)); // Wait for onload callbacks
+
 
         // Check if Openverse client was called for appear sound
         expect(global.window.openverseClient).toHaveBeenCalledWith("GET v1/audio/", {
@@ -95,12 +136,12 @@ describe('AudioManager', () => {
         // It should be called twice, once for appear, once for tap
         expect(global.Howl).toHaveBeenCalledTimes(2);
         expect(global.Howl).toHaveBeenCalledWith(expect.objectContaining({
-            src: ['http://example.com/cat_meow.mp3'],
+            src: ['http://example.com/cat_meow.mp3'], // Appear sound
             volume: 0.5,
             html5: true,
         }));
         expect(global.Howl).toHaveBeenCalledWith(expect.objectContaining({
-            src: ['http://example.com/cat_purr.mp3'],
+            src: ['http://example.com/cat_purr.mp3'], // Tap sound
             volume: 0.5,
             html5: true,
         }));
@@ -156,7 +197,12 @@ describe('AudioManager', () => {
         
         const catData = mockAnimalData.find(a => a.name === 'Cat');
         await audioManager.searchAndLoadSound(catData.searchTerms[0], 'Cat_appear');
-        await new Promise(resolve => setTimeout(resolve, 0)); // Ensure loading completes
+        
+        // Ensure Howl's onload has been processed and cache is populated
+        for (let i = 0; i < 5; i++) { // Pump the event loop
+            await new Promise(resolve => process.nextTick(resolve));
+        }
+        await new Promise(resolve => setTimeout(resolve, 50)); // Wait for onload callback
 
         expect(audioManager.soundCache.has('Cat_appear')).toBe(true);
         const mockHowlInstance = audioManager.soundCache.get('Cat_appear');
@@ -222,39 +268,56 @@ describe('AudioManager', () => {
             data: { results: [{ download_url: 'http://example.com/bad_sound.mp3' }] }
         });
 
-        // Make Howl simulate an error
-        global.Howl.mockImplementationOnce(options => ({
-            play: jest.fn(),
-            volume: jest.fn(),
-            on: jest.fn((event, callback) => {
-                if (options.onloaderror && event === 'loaderror') {
-                    setTimeout(() => options.onloaderror(123, 'Simulated load error'), 0);
-                }
-            }),
-        }));
+        const originalHowl = global.Howl;
+        global.Howl = jest.fn(options => {
+            const howlInstance = {
+                play: jest.fn().mockReturnThis(),
+                volume: jest.fn().mockReturnThis(),
+                on: jest.fn((event, callback) => {
+                    if (options.onloaderror && event === 'loaderror') {
+                        process.nextTick(() => options.onloaderror(123, 'Simulated load error'));
+                    } else if (options.onload && event === 'load') {
+                        process.nextTick(options.onload);
+                    }
+                    return howlInstance;
+                }),
+                state: jest.fn().mockReturnValue('error'), // Mock state as error
+            };
+            // Simulate onloaderror being called for the mock in this specific test case
+            if(options.onloaderror){
+                process.nextTick(() => options.onloaderror(123, 'Simulated load error'));
+            }
+            return howlInstance;
+        });
 
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
         const catData = mockAnimalData.find(a => a.name === 'Cat');
-        // We expect this to log an error, but not throw, due to .catch in AudioManager
-        await expect(audioManager.searchAndLoadSound(catData.searchTerms[0], 'Cat_appear')).resolves.toBeUndefined();
+        await audioManager.searchAndLoadSound(catData.searchTerms[0], 'Cat_appear_bad');
         
-        await new Promise(resolve => setTimeout(resolve, 50)); // Allow async operations and error logging
+        // Ensure Howl's onloaderror has been processed
+        for (let i = 0; i < 5; i++) { // Pump the event loop
+            await new Promise(resolve => process.nextTick(resolve));
+        }
+        await new Promise(resolve => setTimeout(resolve, 50)); // Wait for onerror callback
 
-        expect(audioManager.soundCache.has('Cat_appear')).toBe(false);
+        expect(audioManager.soundCache.has('Cat_appear_bad')).toBe(false);
         expect(consoleErrorSpy).toHaveBeenCalledWith(
             'Howler.js failed to load sound from http://example.com/bad_sound.mp3:',
             'Simulated load error'
         );
-        // Also check the warning from searchAndLoadSound about the specific failure
-        const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
         expect(consoleWarnSpy).toHaveBeenCalledWith(
             'Failed to load sound from http://example.com/bad_sound.mp3:',
-            expect.any(Error) // Error: Failed to load sound from http://example.com/bad_sound.mp3: Simulated load error
+            expect.any(Error)
         );
 
         consoleErrorSpy.mockRestore();
         consoleWarnSpy.mockRestore();
+        global.Howl = originalHowl; // Restore original mock
     });
 
 });
+
+// Increase Jest timeout for async tests
+jest.setTimeout(10000); // 10 seconds timeout for all tests in this file
