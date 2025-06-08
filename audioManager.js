@@ -61,7 +61,7 @@ class AudioManager {
                 if (ClientConstructor) {
                     console.log('AUDIO_MANAGER_LOG: Final ClientConstructor type:', typeof ClientConstructor);
                     console.log('AUDIO_MANAGER_LOG: Final ClientConstructor.toString():', String(ClientConstructor).slice(0,250));
-                    this.openverseClientInstance = new ClientConstructor();
+                    this.openverseClientInstance = ClientConstructor(); // Changed: Removed 'new'
                     console.log('AUDIO_MANAGER_LOG: Openverse API client instantiated successfully.');
                 } else {
                     console.error('AUDIO_MANAGER_LOG_ERROR: No valid Openverse API client constructor found after checks.');
